@@ -1,57 +1,35 @@
-# Project Name
+---
+page_type: sample
+description: "A collection of Azure PowerShell code samples used in Microsoft's official Azure PowerShell Documentation."
+languages:
+- powershell
+products:
+- azure
+---
 
-(short, 1-3 sentenced, description of the project)
+# Sample code used in Microsoft's official Azure PowerShell documentation
 
-## Features
+This repository contains Azure PowerShell sample code and snippets featured in Microsoft's official
+Azure PowerShell documentation.
 
-This project framework provides the following features:
+## Contributing
 
-* Feature 1
-* Feature 2
-* ...
+> Note: this repository is only for Azure PowerShell code samples that reside in Microsoft's
+> official Azure PowerShell documentation on [docs.microsoft.com](https://docs.microsoft.com/).
 
-## Getting Started
+We welcome public contributions into this repository via pull requests. Please note that before we
+can accept your pull request you must sign our
+[Contribution License Agreement](https://cla.microsoft.com/). This is a one-time requirement.
 
-### Prerequisites
+## License
 
-(ideally very short, if any)
+The MIT License applies to the code contained in this repo. For more information, see
+[LICENSE](LICENSE).
 
-- OS
-- Library version
-- ...
+## Microsoft Open Source Code of Conduct
 
-### Installation
-
-(ideally very short)
-
-- npm install [package name]
-- mvn install
-- ...
-
-### Quickstart
-(Add steps to get up and running quickly)
-
-1. git clone [repository clone url]
-2. cd [repository name]
-3. ...
-
-
-## Demo
-
-A demo app is included to show how to use the project.
-
-To run the demo, follow these steps:
-
-(Add steps to start up the demo)
-
-1.
-2.
-3.
-
-## Resources
-
-(Any additional resources or related projects)
-
-- Link to supporting information
-- Link to similar sample
-- ...
+This repository has adopted the
+[Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more
+information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or
+comments.
