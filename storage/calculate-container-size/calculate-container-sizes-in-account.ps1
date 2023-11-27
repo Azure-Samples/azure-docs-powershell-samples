@@ -76,8 +76,7 @@ do {
               $snapshot_usage+= $blobs[$b].Length
             }
             
-            if ($blobs[$b].VersionId -ne $null)
-            {
+            if ($blobs[$b].VersionId -ne $null) {
               $version_count++
               $version_usage += $blobs[$b].Length
             }
