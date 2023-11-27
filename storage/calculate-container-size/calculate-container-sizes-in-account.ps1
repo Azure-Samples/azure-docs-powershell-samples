@@ -58,8 +58,7 @@ do {
         if ($blobs -ne $null) {
           $blob_continuation_token = $blobs[$blobs.Count - 1].ContinuationToken
           
-          for ([int] $b = 0; $b -lt $blobs.Count; $b++)
-          {
+          for ([int] $b = 0; $b -lt $blobs.Count; $b++) {
             $total_blob_count++
             $total_usage += $blobs[$b].Length
             
