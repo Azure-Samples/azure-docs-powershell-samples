@@ -35,8 +35,7 @@ do {
   $containers = Get-AzStorageContainer -Context $Ctx -MaxCount 5000 -ContinuationToken $container_continuation_token    
   $container_continuation_token = $null
 
-  if ($containers -ne $null)
-  {
+  if ($containers -ne $null) {
     $container_continuation_token = $containers[$containers.Count - 1].ContinuationToken
     
     for ([int] $c = 0; $c -lt $containers.Count; $c++)
