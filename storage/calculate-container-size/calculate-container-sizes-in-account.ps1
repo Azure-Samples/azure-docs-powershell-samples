@@ -82,8 +82,7 @@ do {
             }
           }
           
-          If ($blob_continuation_token -ne $null)
-          {
+          if ($blob_continuation_token -ne $null) {
             Write-Verbose "Blob listing continuation token = {0}".Replace("{0}",$blob_continuation_token.NextMarker)
           }
         }
