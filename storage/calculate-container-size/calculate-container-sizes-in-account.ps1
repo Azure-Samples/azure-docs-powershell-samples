@@ -62,8 +62,7 @@ do {
             $total_blob_count++
             $total_usage += $blobs[$b].Length
             
-            if ($blobs[$b].IsDeleted)
-            {
+            if ($blobs[$b].IsDeleted) {
               $soft_delete_count++
               $soft_delete_usage += $blobs[$b].Length
             }
