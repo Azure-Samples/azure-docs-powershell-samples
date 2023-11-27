@@ -99,10 +99,10 @@ do {
         TotalBlobUsageinGB = $total_usage/1GB
         SoftDeletedBlobCount = $soft_delete_count
         SoftDeletedBlobUsageinGB = $soft_delete_usage/1GB
-		SnapshotCount = $snapshot_count
-		SnapshotUsageinGB = $snapshot_usage/1GB
-		VersionCount = $version_count
-		VersionUsageinGB = $version_usage/1GB
+	SnapshotCount = $snapshot_count
+	SnapshotUsageinGB = $snapshot_usage/1GB
+	VersionCount = $version_count
+	VersionUsageinGB = $version_usage/1GB
       }
     }
   }
