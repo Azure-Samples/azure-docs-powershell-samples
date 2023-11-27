@@ -13,9 +13,7 @@ $storage_account_name = "<name-of-your-storage-account>"
 $resource_group = "<name-of-your-resource-group"
 
 # Get a reference to the storage account and the context.
-$storageAccount = Get-AzStorageAccount `
-  -ResourceGroupName $resource_group `
-  -Name $storage_account_name
+$storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName
 $Ctx = $storageAccount.Context
 
 $container_continuation_token = $null
