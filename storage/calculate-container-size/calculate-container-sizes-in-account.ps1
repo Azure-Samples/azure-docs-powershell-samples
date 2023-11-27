@@ -38,8 +38,7 @@ do {
   if ($containers -ne $null) {
     $container_continuation_token = $containers[$containers.Count - 1].ContinuationToken
     
-    for ([int] $c = 0; $c -lt $containers.Count; $c++)
-    {
+    for ([int] $c = 0; $c -lt $containers.Count; $c++) {
       $container = $containers[$c].Name
       Write-Verbose "Processing container : $container"
       $total_usage = 0
