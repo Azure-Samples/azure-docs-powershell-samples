@@ -103,8 +103,7 @@ do {
     }
   }
   
-  If ($container_continuation_token -ne $null)
-  {
+  if ($container_continuation_token -ne $null) {
     Write-Verbose "Container listing continuation token = {0}".Replace("{0}",$container_continuation_token.NextMarker)
   }
 } while ($container_continuation_token -ne $null)
