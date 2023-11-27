@@ -41,7 +41,7 @@ do {
       
       do {
         $blobs = Get-AzStorageBlob -Context $Ctx -IncludeDeleted -IncludeVersion -Container $container -ConcurrentTaskCount 100 -MaxCount 5000 -ContinuationToken $blob_continuation_token
-        $blob_continuation_token = $null;
+        $blob_continuation_token = $null
         
         if ($blobs -ne $null)
         {
