@@ -46,10 +46,10 @@ do {
       $total_blob_count = 0
       $soft_delete_usage = 0
       $soft_delete_count = 0
-             $version_usage = 0
-             $version_count = 
-             $snapshot_count = 0 
-             $snapshot_usage = 0
+      $version_usage = 0
+      $version_count = 
+      $snapshot_count = 0 
+      $snapshot_usage = 0
       $blob_continuation_token = $null
       
       do {
