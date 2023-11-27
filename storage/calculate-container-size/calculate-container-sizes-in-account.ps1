@@ -19,7 +19,7 @@ $Ctx = $storageAccount.Context
 $container_continuation_token = $null
 do {
   $containers = Get-AzStorageContainer -Context $Ctx -MaxCount 5000 -ContinuationToken $container_continuation_token    
-  $container_continuation_token = $null;
+  $container_continuation_token = $null
 
   if ($containers -ne $null)
   {
