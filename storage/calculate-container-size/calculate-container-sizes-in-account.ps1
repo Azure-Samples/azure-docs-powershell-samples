@@ -1,16 +1,30 @@
-# This script will show how to get the total size of the blobs in all containers in a storage account.
-# Before running this, you need to create a storage account, at least one container,
-#    and upload some blobs into that container.
-# note: this retrieves all of the blobs in each container in one command.
-#       Run the Connect-AzAccount cmdlet to connect to Azure.
-#       Requests that are sent as part of this tool will incur transactional costs.
-#
+<#
+.SYNOPSIS
+Calculates the total size of blobs in all containers in a specified Azure storage account.
+
+.DESCRIPTION
+Before running this script, ensure you have:
+- A storage account created
+- At least one container in the storage account
+- Uploaded some blobs into the container
+
+.EXAMPLE
+.\Get-AzureStorageAccountBlobSize.ps1 -StorageAccountName mystorageaccount -ResourceGroupName myResourceGroup
+
+.NOTES
+This script incurs transactional costs for Azure requests.
+#>
+
+[CmdletBinding()]
+param (
+    [ValidateNotNullOrEmpty()]
+    [string]$ResourceGroupName = '<name-of-your-resource-group>',
+    
+    [ValidateNotNullOrEmpty()]
+    [string]$StorageAccountName = '<name-of-your-storage-account>'
+)
 
 $containerstats = @()
-
-# Provide the name of your storage account and resource group
-$storage_account_name = "<name-of-your-storage-account>"
-$resource_group = "<name-of-your-resource-group"
 
 # Get a reference to the storage account and the context.
 $storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName
