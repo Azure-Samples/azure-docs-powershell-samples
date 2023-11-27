@@ -72,8 +72,7 @@ do {
               $soft_delete_usage += $blobs[$b].Length
             }
             
-            if ($blobs[$b].SnapshotTime -ne $null)
-            {
+            if ($blobs[$b].SnapshotTime -ne $null) {
               $snapshot_count++
               $snapshot_usage+= $blobs[$b].Length
             }
