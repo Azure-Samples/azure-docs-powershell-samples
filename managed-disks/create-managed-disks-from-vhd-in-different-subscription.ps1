@@ -34,6 +34,10 @@ $diskSize = '128'
 # e.g. https://contosostorageaccount1.blob.core.windows.net/vhds/contoso-um-vm120170302230408.vhd 
 $vhdUri = 'https://contosoststorageaccount1.blob.core.windows.net/vhds/contosovhd123.vhd' 
 
+#Provide the resource Id of the storage account where VHD file is stored.
+#e.g. /subscriptions/6472s1g8-h217-446b-b509-314e17e1efb0/resourceGroups/MDDemo/providers/Microsoft.Storage/storageAccounts/contosostorageaccount
+$storageAccountId = '/subscriptions/yourSubscriptionId/resourceGroups/yourResourceGroupName/providers/Microsoft.Storage/storageAccounts/yourStorageAccountName'
+
 #Provide the storage type for the Managed Disk. PremiumLRS or StandardLRS.
 $sku = 'Premium_LRS'
 
@@ -53,7 +57,7 @@ Set-AzContext -Subscription $subscriptionId
 #$HyperVGeneration = 'yourHyperVGen'
 
 #If you're creating an OS disk, add -HyperVGeneration and -OSType parameters
-$diskConfig = New-AzDiskConfig -SkuName $sku -Location $location -DiskSizeGB $diskSize -SourceUri $vhdUri -CreateOption Import
+$diskConfig = New-AzDiskConfig -SkuName $sku -Location $location -DiskSizeGB $diskSize -SourceUri $vhdUri -StorageAccountId $storageAccountId -CreateOption Import
 
 #Create Managed disk
-New-AzDisk -DiskName $diskName -Disk $diskConfig -ResourceGroupName $resourceGroupName -StorageAccountId $storageAccountId
+New-AzDisk -DiskName $diskName -Disk $diskConfig -ResourceGroupName $resourceGroupName
