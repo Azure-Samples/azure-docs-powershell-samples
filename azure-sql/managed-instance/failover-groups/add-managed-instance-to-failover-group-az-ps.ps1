@@ -342,7 +342,7 @@ New-AzSqlInstance -Name $primaryInstance `
 $primaryInstance
 Write-host "Primary SQL Managed Instance created successfully."
 
-# <CreatePrimaryInstance>
+# </CreatePrimaryInstance>
 
 <#===========================================================================
 The following configures resources for the secondary SQL Managed Instance
@@ -579,7 +579,7 @@ New-AzSqlInstance -Name $secondaryInstance `
                   -DnsZonePartner $primaryManagedInstanceId.Id
 Write-host "Secondary SQL Managed Instance created successfully."
 
-# <CreateSecondaryInstance>
+# </CreateSecondaryInstance>
 
 <#===========================================================================
 The following configures the failover group
