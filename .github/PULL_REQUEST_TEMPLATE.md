@@ -1,45 +1,34 @@
-## Purpose
-<!-- Describe the intention of the changes being proposed. What problem does it solve or functionality does it add? -->
-* ...
+# PR Summary
 
-## Does this introduce a breaking change?
-<!-- Mark one with an "x". -->
-```
-[ ] Yes
-[ ] No
-```
+<!--
+    Add a summary of the changes made in this PR and list related issues
+    here. For example:
 
-## Pull Request Type
-What kind of change does this Pull Request introduce?
+    This change fixes problem X in the samples for Y.
 
-<!-- Please check the one that applies to this PR using "x". -->
-```
-[ ] Bugfix
-[ ] Feature
-[ ] Code style update (formatting, local variables)
-[ ] Refactoring (no functional changes, no api changes)
-[ ] Documentation content changes
-[ ] Other... Please describe:
-```
+    - Fixes #1234
+-->
 
-## How to Test
-*  Get the code
+## PR Checklist
 
-```
-git clone [repo-address]
-cd [repo-name]
-git checkout [branch-name]
-npm install
-```
+<!--
+    These items are mandatory. For your PR to be reviewed and merged,
+    ensure you have read and agree to the following. As you acknowledge
+    each item, check each box by replacing the space between the brackets
+    with an x or clicking on the box in the UI after submitting your PR.
+-->
 
-* Test the code
-<!-- Add steps to run the tests suite and/or manually test -->
-```
-```
+- [ ] **Documentation use only:** This PR contains non-production samples used in Microsoft's official Azure PowerShell documentation.
+- [ ] **Azure PowerShell use only:** The samples in this PR contain commands from the Az PowerShell module.
+- [ ] **Sample scripts only:** This PR does not contain PowerShell modules, binaries, tools, or other files that are not samples.
+- [ ] **Validated samples:** I have validated these samples using the latest version of the Az PowerShell module.
+- [ ] **Ongoing support:** I agree to provide ongoing support for these samples and will promptly respond to issues and PRs.
 
-## What to Check
-Verify that the following are valid
-* ...
+<!--
+    If your PR is a work in progress, please mark it as a draft or
+    prefix it with "(WIP)" or "WIP:".
 
-## Other Information
-<!-- Add any other helpful information that may be needed here. -->
+    This helps us understand whether or not your PR is ready to review.
+
+    Add a #sign-off comment when you're ready for review.
+-->
