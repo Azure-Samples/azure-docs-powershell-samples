@@ -18,11 +18,11 @@
     with an x or clicking on the box in the UI after submitting your PR.
 -->
 
-- [ ] **Documentation use only** This PR contains non-production samples used in Microsoft's official Azure PowerShell documentation.
-- [ ] **Azure PowerShell use only** The samples in this PR contain commands from the Az PowerShell module.
-- [ ] **Sample scripts only** This PR does not contain PowerShell modules, binaries, tools, or other files that are not samples.
-- [ ] **Validated samples** I have validated these samples using the latest version of the Az PowerShell module.
-- [ ] **Ongoing support** I agree to provide ongoing support for these samples and will promptly respond to issues and PRs.
+- [ ] **Documentation use only:** This PR contains non-production samples used in Microsoft's official Azure PowerShell documentation.
+- [ ] **Azure PowerShell use only:** The samples in this PR contain commands from the Az PowerShell module.
+- [ ] **Sample scripts only:** This PR does not contain PowerShell modules, binaries, tools, or other files that are not samples.
+- [ ] **Validated samples:** I have validated these samples using the latest version of the Az PowerShell module.
+- [ ] **Ongoing support:** I agree to provide ongoing support for these samples and will promptly respond to issues and PRs.
 
 <!--
     If your PR is a work in progress, please mark it as a draft or
