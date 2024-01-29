@@ -1,7 +1,7 @@
 function New-Cluster {
     # Script should stop on failures
     $ErrorActionPreference = "Stop"
-######Start snippet line 5
+#####Start snippet line 5
     # Login to your Azure subscription
     $context = Get-AzContext
     if ($context -eq $null) 
@@ -32,6 +32,9 @@ function New-Cluster {
     $defaultStorageAccountKey = (Get-AzStorageAccountKey `
                                     -ResourceGroupName $resourceGroupName `
                                     -Name $defaultStorageAccountName)[0].Value
+
+    $storageAccountResourceId = (Get-AzStorageAccount -ResourceGroupName $resourceGroupName -AccountName $defaultStorageAccountName).Id  
+
     $defaultStorageContext = New-AzStorageContext `
                                     -StorageAccountName $defaultStorageAccountName `
                                     -StorageAccountKey $defaultStorageAccountKey
@@ -41,11 +44,11 @@ function New-Cluster {
     # Cluster login is used to secure HTTPS services hosted on the cluster
     $httpCredential = Get-Credential -Message "Enter Cluster login credentials" -UserName "admin"
     # SSH user is used to remotely connect to the cluster using SSH clients
-    $sshCredentials = Get-Credential -Message "Enter SSH user credentials"
+    $sshCredentials = Get-Credential -Message "Enter SSH user credentials" -UserName "sshuser"
 
     # Default cluster size (# of worker nodes), version, type, and OS
     $clusterSizeInNodes = "4"
-    $clusterVersion = "3.6"
+    $clusterVersion = "5.1"
     $clusterType = "Hadoop"
     $clusterOS = "Linux"
     # Set the storage container name to the cluster name
@@ -56,20 +59,8 @@ function New-Cluster {
         -Name $clusterName -Context $defaultStorageContext 
 
     # Create the HDInsight cluster
-    $clusterSizeInNodes = "4"
-    $clusterVersion = "5.1"
-    $clusterType = "Hadoop"
-    $clusterOS = "Linux"
-    $location = "japaneast"
-    $clusterName = "hadoop51"
-    $storageAccountResourceId = "yourstorageaccountresourceid"
-    $storageAccountKey = "yourstorageaccountkey"
-    
-    $httpCredential = Get-Credential -Message "Enter Cluster login credentials" -UserName "admin"
-    $SshCredentials = Get-Credential -Message "Enter SSH user credentials"
- 
-    New-AzHDInsightCluster `
-        -ResourceGroupName "yourresourcesgroup" `
+        New-AzHDInsightCluster `
+        -ResourceGroupName $resourceGroupName `
         -ClusterName $clusterName `
         -Location $location `
         -ClusterSizeInNodes $clusterSizeInNodes `
@@ -78,7 +69,8 @@ function New-Cluster {
         -Version $clusterVersion `
         -HttpCredential $httpCredential `
         -StorageAccountResourceId $storageAccountResourceId `
-        -StorageAccountKey $storageAccountKey `
+        -StorageAccountKey $defaultStorageAccountKey `
+        -StorageContainer $defaultBlobContainerName `
         -SshCredential $sshCredentials
-######End snippet line 71
+#####End snippet line 71
 }
