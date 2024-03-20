@@ -1,9 +1,12 @@
 <#
-	.SYNOPSIS
+    .SYNOPSIS
     Script for migrating from Autopatching schedule on SQL VM to Azure Update Manager(AUM) schedule 
 
     .DESCRIPTION
-    This script is for migrating from Autopatching schedule on SQL VM to Azure Update Manager(AUM) schedule 
+    This script is for migrating from Autopatching schedule on SQL VM to Azure Update Manager(AUM) schedule
+    Before running this script, ensure you have:
+    - SQL VM is running
+    - Autopatching is enabled
 
     .PARAMETER ResourceGroupName
     Name of the ResourceGroup whose VMs need to be migrated
@@ -12,6 +15,7 @@
     Name of the VM to be migrated
 
     .EXAMPLE
+    import-module -Name ".\MigratePatchingSchedule.psm1"
     MigratePatchingSchedule -ResourceGroupName myrg -VmName myvm-1	
 #>
 
@@ -25,6 +29,12 @@ function MigratePatchingSchedule {
         [Parameter(Mandatory = $true)]
         [string]
         $VmName)
+
+	$context = Get-AzContext
+	if ($context -eq $null) 
+	{
+		Connect-AzAccount
+	}
 
 	#set values
 	$configName = "MigratedSchedule-"+$VmName
@@ -146,7 +156,7 @@ function MigratePatchingSchedule {
 }
 
 <#
-	.SYNOPSIS
+    .SYNOPSIS
     Function for getting current timezone id on VM. If not found, prompts user to enter timezone id
 
     .DESCRIPTION
@@ -207,7 +217,7 @@ function Get-TimezoneId {
 }
 
 <#
-	.SYNOPSIS
+    .SYNOPSIS
     Function for validating timezone id entered by user
 
     .DESCRIPTION
@@ -235,7 +245,7 @@ function Validate-TimezoneId {
 }
 
 <#
-	.SYNOPSIS
+    .SYNOPSIS
     Function for converting current autopatching schedule to AUM schedule
 
     .DESCRIPTION
@@ -253,7 +263,7 @@ function Validate-TimezoneId {
     .PARAMETER MaintenanceWindowStartingHour
     Current MaintenanceWindowStartingHour value
 	
-	.PARAMETER MaintenanceWindowDuration
+    .PARAMETER MaintenanceWindowDuration
     Current MaintenanceWindowDuration value
 
     .EXAMPLE
@@ -268,13 +278,13 @@ function Convert-Schedule {
         [Parameter(Mandatory = $true)]
         [string]
         $VmName,
-		[Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [string]
         $DayOfWeek,
         [Parameter(Mandatory = $true)]
         [int]
         $MaintenanceWindowStartingHour,
-		[Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [int]
         $MaintenanceWindowDuration)
 		
