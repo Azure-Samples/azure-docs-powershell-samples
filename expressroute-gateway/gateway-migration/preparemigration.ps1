@@ -67,7 +67,7 @@ $prefix = Read-Host "Please choose the suffix for new resources, new resource na
 $pipName = $pip.Name + "_" + $prefix
 $ipconfigName = $gateway.Properties.ipConfigurations[0].name + "_" + $prefix
 $gatewayName = $gateway.Name + "_" + $prefix
-$zone = Read-Host "Please select zones for new gateway"
+$zone = Read-Host "Please select zones for new gateway, for non-Az region, do not enter anything"
 $gatewaySku = Read-Host "Please choose the sku for new gateway [ErGw1AZ|ErGw2AZ|ErGw3AZ]"
 
 if($pipName.Length -gt 80)
@@ -83,6 +83,11 @@ if($ipconfigName.Length -gt 80)
 if($gatewayName.Length -gt 80)
 {
     $gatewayName = $gatewayName.Substring(0,80)
+}
+
+if([string]::IsNullOrEmpty($zone))
+{
+    $zone = $null
 }
 
 $pipNew = New-AzPublicIpAddress -Name $pipName -ResourceGroupName $resourceGroup -Location $location -AllocationMethod Static -Sku Standard -Zone $zone -Force
