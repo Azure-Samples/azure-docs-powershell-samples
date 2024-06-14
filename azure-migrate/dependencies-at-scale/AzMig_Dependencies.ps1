@@ -5,11 +5,11 @@ function GetRequestProperties()
     $ErrorActionPreference = 'Stop'
     
 
-    if(-not (Get-Module Az.Accounts)) {
-        Import-Module Az.Accounts
+    if(-not (Get-Module -Name Az.Accounts)) {
+        Import-Module -Name Az.Accounts
     }
     
-    if ((Get-Module Az.Accounts).Version -lt "2.2.0") {
+    if ((Get-Module -Name Az.Accounts).Version -lt "2.2.0") {
         throw "At least Az.Accounts 2.2.0 is required, please update before continuing."
     }
     
@@ -21,7 +21,7 @@ function GetRequestProperties()
     $TenantId = $CurrentContext.Tenant.Id
     $UserId = $CurrentContext.Account.Id
     if ((-not $TenantId) -or (-not $UserId)) {
-        throw "Tenant not selected. Use Select-AzSubscription to select a subscription"
+        throw "Tenant not selected. Use Set-AzContext to select a subscription"
     }
 
 	$Environment = $CurrentContext.Environment.Name
@@ -29,7 +29,7 @@ function GetRequestProperties()
 
     $SubscriptionId = $CurrentContext.Subscription.Id
     if (-not $SubscriptionId) {
-        throw "No subscription selected. Use Select-AzSubscription to select a subscription"
+        throw "Tenant not selected. Use Set-AzContext to select a subscription"
     }
 	
 	
@@ -128,18 +128,21 @@ function Get-AzMigDiscoveredVMwareVMs {
     #If Appliance name is passed get data only for that appliance
     #If Appliance name is not passed , get data for all appliances in that project
     if (-not $ApplianceName){
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}}else{
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}}
-    Write-Debug $vmwareappliancemap.count
+	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}
+    }
+    else{
+	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}
+    }
+    Write-Debug -Message $vmwareappliancemap.count
     if($vmwareappliancemap) {$vmwareappliancemap | Out-String | Write-Debug};
     if (-not $vmwareappliancemap.count) {throw "No VMware VMs discovered in project"};
     
 	Write-Host "Please wait while the list of discovered machines is downloaded..."
     
     foreach ($item in $vmwareappliancemap.GetEnumerator()) {
-        $SiteId = $item.Value;
+        $SiteId = $item.Value
         $appliancename = $item.Key
-        Write-Debug "Get machines for Site $SiteId"
+        Write-Debug -Message "Get machines for Site $SiteId"
         $query1 = "migrateresources | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')|mv-expand properties.networkAdapters| extend  IPAddressList = properties_networkAdapters.ipAddressList, ServerName = properties.displayName|summarize IPadresses=make_list(IPAddressList) by name| join kind = inner (migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')) on name| join kind=leftouter ( migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')| mv-expand properties.dependencyMapDiscovery.errors| extend errorid=properties_dependencyMapDiscovery_errors.id,errorcode = properties_dependencyMapDiscovery_errors.code,errormessage=properties_dependencyMapDiscovery_errors.message| extend Error = strcat('ID',':',errorid,',',' ','Code',':',errorcode,',',' ','Message',':',errormessage)| summarize Error = make_list(Error) by name) on name| project-away name1,name2|extend ServerName=properties.displayName| extend DepError = strcat('DependencyScopeStatus',':',properties.dependencyMapDiscovery.discoveryScopeStatus,' ','Errors',':',Error)| extend Status = iff(array_length(properties.dependencyMapDiscovery.errors) == 0,properties.dependencyMapping,'ValidationFailed')| extend ServerName=ServerName,IPAddresses=IPadresses,Source=properties.vCenterFQDN,DependencyStatus=Status,DependencyErrors=DepError,ErrorTimeStamp=properties.updatedTimestamp,DependencyStartTime=properties.dependencyMappingStartTime,OperatingSystem=properties.guestOSDetails,PowerStatus=properties.powerStatus,Appliance='$appliancename',FriendlyNameOfCredentials=properties.dependencyMapDiscovery.hydratedRunAsAccountId,Tags=tags,ARMID=id| project ServerName,Source,DependencyStatus,DependencyErrors,ErrorTimeStamp,DependencyStartTime,OperatingSystem,PowerStatus,Appliance,FriendlyNameOfCredentials,Tags,ARMID"
 
 		Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
@@ -159,7 +162,7 @@ function Get-AzMigDiscoveredVMwareVMs {
           $kqlResult += $graphResult.data
         
           if ($graphResult.data.Count -lt $batchSize) {
-            break;
+            break
           }
           $skipResult += $skipResult + $batchSize
         }
@@ -169,7 +172,8 @@ function Get-AzMigDiscoveredVMwareVMs {
                     Write-Host "Machines discovered for $appliancename"
                     $kqlResult | Export-Csv -NoTypeInformation -Path $OutputCsvFile -Append
                     Write-Host "List of machines saved to" $OutputCsvFile
-        } else {
+        }
+         else {
             Write-Host "No results found."
         }
             
@@ -211,14 +215,15 @@ function Set-AzMigDependencyMappingAgentless {
 		throw "Input CSV file does not contain required column 'ARMID'"
 	}
 
-    if($Enable)
-    { 
+    if($Enable){ 
         $ActionVerb = "Enabled";
-		$EnableDependencyMapping = $true;
-    } elseif ($Disable) {
+		$EnableDependencyMapping = $true
+    } 
+    elseif ($Disable){
         $ActionVerb = "Disabled";
-		$EnableDependencyMapping = $false;
-    } else {
+		$EnableDependencyMapping = $false
+    } 
+    else{
         throw "Error"
     }
 
@@ -232,9 +237,11 @@ function Set-AzMigDependencyMappingAgentless {
             
             if ($siteid -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
                 $machinetype = "vmware"
-            } elseif ($siteid -match "/subscriptions/.*/HyperVSites/([^/]*)\w{4}site") {
+            } 
+            elseif ($siteid -match "/subscriptions/.*/HyperVSites/([^/]*)\w{4}site") {
                 $machinetype = "hyperv"
-            } elseif ($siteid -match "/subscriptions/.*/ServerSites/([^/]*)\w{4}site") {
+            } 
+            elseif ($siteid -match "/subscriptions/.*/ServerSites/([^/]*)\w{4}site") {
                 $machinetype = "server"
             }
             
@@ -258,14 +265,16 @@ function Set-AzMigDependencyMappingAgentless {
                         $Numofvmwareenabledalready = $result.count_
                         $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 3000 - $Numofvmwareenabledalready
                     }
-                } elseif ($type -eq "hyperv") {
+                }
+                elseif ($type -eq "hyperv") {
                     $query = "migrateresources | where type == 'microsoft.offazure/hypervsites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
                     $result = Search-AzGraph -Query $query
                     if ($result) {
                         $Numofhypervenabledalready = $result.count_
                         $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 1000 - $Numofhypervenabledalready
                     }
-                } elseif ($type -eq "server") {
+                }
+                elseif ($type -eq "server") {
                     $query = "migrateresources | where type == 'microsoft.offazure/serversites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
                     $result = Search-AzGraph -Query $query
                     if ($result) {
@@ -283,7 +292,7 @@ function Set-AzMigDependencyMappingAgentless {
         }
     }
     
-    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARM ID")
+    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARMID")
     
     $VMs = $VMs | sort
     
@@ -310,7 +319,7 @@ function Set-AzMigDependencyMappingAgentless {
                                         dependencyMapping = $ActionVerb 
                                        }
             $jsonPayload.machines += $tempobj;
-            continue;
+            continue
         }
 
         #different site. Send update request for previous site and start building request for the new site
@@ -319,7 +328,7 @@ function Set-AzMigDependencyMappingAgentless {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
                 $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
-                Write-Debug $requesturi
+                Write-Debug -Message $requesturi
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
                 if ($response) {
@@ -338,7 +347,7 @@ function Set-AzMigDependencyMappingAgentless {
                                         machineArmId = $machine
                                         dependencyMapping = $ActionVerb 
                                        }
-            $jsonPayload.machines += $tempobj;
+            $jsonPayload.machines += $tempobj
             $currentsite = $sitename #update current site name
         }
     }
@@ -363,7 +372,7 @@ function Set-AzMigDependencyMappingAgentless {
 		}
 
     #Reset jsonpayload and loop through the same machines , this time for hyperV and server fabric
-    $jsonPayload.machines = @();
+    $jsonPayload.machines = @()
 
     $currentsite = $null
     foreach ($machine in $VMs) {
@@ -371,8 +380,8 @@ function Set-AzMigDependencyMappingAgentless {
             continue;     
         }
 
-        $sitename = $Matches[1];
-        Write-Debug "Site: $sitename Machine: $machine";
+        $sitename = $Matches[1]
+        Write-Debug "Site: $sitename Machine: $machine"
 
         if((-not $currentsite) -or ($sitename -eq $currentsite)) {
             $currentsite = $sitename;
@@ -380,7 +389,7 @@ function Set-AzMigDependencyMappingAgentless {
                                         machineId = $machine
                                         isDependencyMapToBeEnabled = $EnableDependencyMapping 
                                        }
-            $jsonPayload.machines += $tempobj;
+            $jsonPayload.machines += $tempobj
             continue;
         }
 
@@ -576,7 +585,7 @@ $jsonPayload = @"
 	
 	Write-Host "Please wait while the downloaded data is processed for PowerBI..."
 	
-	Import-Csv $temp_filename | Select-Object "Source server name", "Source IP", "Source application", "Source process", "Destination server name", "Destination IP", "Destination application", "Destination process", "Destination port" | Sort-Object * -Unique -Descending | Export-Csv -NoTypeInformation $filename
+	Import-Csv -Path $temp_filename | Select-Object -Property "Source server name", "Source IP", "Source application", "Source process", "Destination server name", "Destination IP", "Destination application", "Destination process", "Destination port" | Sort-Object -Property * -Unique -Descending | Export-Csv -NoTypeInformation -Path $filename
 	
 	Write-Host "Dependencies data for appliance " $Appliance " saved in " $filename 
 	
