@@ -1,12 +1,22 @@
 
-#Module AzMig_Dependencies
+# Check if the variables exist
+$existingVariables = @("AMH_APIVERSION", "SDS_APIVERSION", "HyperVandServer_APIVERSION", "SAS_APIVERSION", "RSV_APIVERSION")
 
+foreach ($variable in $existingVariables) {
+    if (Get-Variable -Name $variable -ErrorAction SilentlyContinue) {
+        # Remove the variable if it exists
+        Remove-Variable -Name $variable -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# Set the variables as constants
 Set-Variable -Name AMH_APIVERSION -Value "?api-version=2018-09-01-preview" -Option Constant -Scope Script -Force
 Set-Variable -Name SDS_APIVERSION -Value "?api-version=2020-01-01" -Option Constant -Scope Script -Force
 Set-Variable -Name HyperVandServer_APIVERSION -Value "?api-version=2020-08-01-preview" -Option Constant -Scope Script -Force
 Set-Variable -Name SAS_APIVERSION -Value "?api-version=2019-10-01" -Option Constant -Scope Script -Force
 Set-Variable -Name RSV_APIVERSION -Value "?api-version=2018-07-10" -Option Constant -Scope Script -Force
 
+# Rest of your script
 
 function GetRequestProperties()
 {
