@@ -1,20 +1,10 @@
+# Set the variables with different names to avoid conflicts
+Set-Variable -Name NEW_AMH_APIVERSION -Value "?api-version=2018-09-01-preview" -Option Constant -Scope Script -Force
+Set-Variable -Name NEW_SDS_APIVERSION -Value "?api-version=2020-01-01" -Option Constant -Scope Script -Force
+Set-Variable -Name NEW_HyperVandServer_APIVERSION -Value "?api-version=2020-08-01-preview" -Option Constant -Scope Script -Force
+Set-Variable -Name NEW_SAS_APIVERSION -Value "?api-version=2019-10-01" -Option Constant -Scope Script -Force
+Set-Variable -Name NEW_RSV_APIVERSION -Value "?api-version=2018-07-10" -Option Constant -Scope Script -Force
 
-# Check if the variables exist
-$existingVariables = @("AMH_APIVERSION", "SDS_APIVERSION", "HyperVandServer_APIVERSION", "SAS_APIVERSION", "RSV_APIVERSION")
-
-foreach ($variable in $existingVariables) {
-    if (Get-Variable -Name $variable -ErrorAction SilentlyContinue) {
-        # Remove the variable if it exists
-        Remove-Variable -Name $variable -Force -ErrorAction SilentlyContinue
-    }
-}
-
-# Set the variables as constants
-Set-Variable -Name AMH_APIVERSION -Value "?api-version=2018-09-01-preview" -Option Constant -Scope Script -Force
-Set-Variable -Name SDS_APIVERSION -Value "?api-version=2020-01-01" -Option Constant -Scope Script -Force
-Set-Variable -Name HyperVandServer_APIVERSION -Value "?api-version=2020-08-01-preview" -Option Constant -Scope Script -Force
-Set-Variable -Name SAS_APIVERSION -Value "?api-version=2019-10-01" -Option Constant -Scope Script -Force
-Set-Variable -Name RSV_APIVERSION -Value "?api-version=2018-07-10" -Option Constant -Scope Script -Force
 
 # Rest of your script
 
@@ -284,7 +274,7 @@ function Set-AzMigDependencyMappingAgentless {
             if ($jsonPayload.machines.count) {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
-                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $SDS_APIVERSION;
+                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $NEW_SDS_APIVERSION;
                 Write-Debug $requesturi
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
@@ -314,7 +304,7 @@ function Set-AzMigDependencyMappingAgentless {
     if ($jsonPayload.machines.count) {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
-       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $SDS_APIVERSION;
+       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $NEW_SDS_APIVERSION;
        Write-Debug $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
@@ -355,7 +345,7 @@ function Set-AzMigDependencyMappingAgentless {
             if ($jsonPayload.machines.count) {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
-                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $HyperVandServer_APIVERSION;
+                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $NEW_HyperVandServer_APIVERSION;
                 Write-Debug "request uri is : $requesturi"
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
@@ -385,7 +375,7 @@ function Set-AzMigDependencyMappingAgentless {
     if ($jsonPayload.machines.count) {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
-       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $HyperVandServer_APIVERSION;
+       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $NEW_HyperVandServer_APIVERSION;
        Write-Debug $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
