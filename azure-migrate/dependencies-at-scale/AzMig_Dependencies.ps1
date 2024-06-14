@@ -283,7 +283,7 @@ function Set-AzMigDependencyMappingAgentless {
         }
     }
     
-    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARM ID")
+    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARMID")
     
     $VMs = $VMs | sort
     
