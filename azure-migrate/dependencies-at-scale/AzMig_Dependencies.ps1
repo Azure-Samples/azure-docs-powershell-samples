@@ -1,12 +1,3 @@
-# Set the variables with different names to avoid conflicts
-Set-Variable -Name NEW_AMH_APIVERSION -Value "?api-version=2018-09-01-preview" -Option Constant -Scope Script -Force
-Set-Variable -Name NEW_SDS_APIVERSION -Value "?api-version=2020-01-01" -Option Constant -Scope Script -Force
-Set-Variable -Name NEW_HyperVandServer_APIVERSION -Value "?api-version=2020-08-01-preview" -Option Constant -Scope Script -Force
-Set-Variable -Name NEW_SAS_APIVERSION -Value "?api-version=2019-10-01" -Option Constant -Scope Script -Force
-Set-Variable -Name NEW_RSV_APIVERSION -Value "?api-version=2018-07-10" -Option Constant -Scope Script -Force
-
-
-# Rest of your script
 
 function GetRequestProperties()
 {
