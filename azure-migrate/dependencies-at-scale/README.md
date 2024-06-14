@@ -13,13 +13,13 @@ With this PowerShell module you can:
 
 ## Pre-requisites
 Before you get started, you need to do the following:
-- [Review](https://docs.microsoft.com/azure/migrate/migrate-support-matrix-vmware#dependency-analysis-requirements-agentless) supported operating systems, and required permissions for agentless dependency analysis.
+- [Review](https://learn.microsoft.com/azure/migrate/migrate-support-matrix-vmware#dependency-analysis-requirements-agentless) supported operating systems, and required permissions for agentless dependency analysis.
 - Have an Azure Migrate project and the Azure Migrate:Server Assessment tool is added to the project.
-- Set up an [Azure Migrate appliance](https://docs.microsoft.com/azure/migrate/migrate-appliance) to discover the on-premises VMware VMs. The appliance discovers on-premises machines, and sends metadata and performance data to Azure Migrate:Server Assessment.
+- Set up an [Azure Migrate appliance](https://learn.microsoft.com/azure/migrate/migrate-appliance) to discover the on-premises VMware VMs. The appliance discovers on-premises machines, and sends metadata and performance data to Azure Migrate:Server Assessment.
 - Ensure that VMware Tools (later than 10.2) is installed on each VM you want to analyze.
 - Ensure you have downloaded the AzMig_Dependencies powershell module in this folder.
-- Ensure you have PowerShell available. It is recommended you use the [latest version of PowerShell](https://docs.microsoft.com/powershell/scripting/install/installing-powershell).
-- Ensure you have the [Azure PowerShell](https://docs.microsoft.com/powershell/azure/install-az-ps) module installed.
+- Ensure you have PowerShell available. It is recommended you use the [latest version of PowerShell](https://learn.microsoft.com/powershell/scripting/install/installing-powershell).
+- Ensure you have the [Azure PowerShell](https://learn.microsoft.com/powershell/azure/install-az-ps) module installed.
 - The Az.Accounts module is required and must be at least version 2.2.0 or higher.
 
 ## Log in to Azure
@@ -39,7 +39,7 @@ Connect-AzAccount -EnvironmentName AzureUSGovernment
 2. Select the subscription in which you have created the Azure Migrate project 
 
 ```PowerShell
-Select-AZSubscription -subscription "Fabrikam Demo Subscription"
+Set-AzContext -Subscription "Fabrikam Demo Subscription"
 ```
 
 3. Import the downloaded AzMig_Dependencies powershell module
