@@ -70,7 +70,6 @@ function GetRequestProperties()
 				baseurl = $baseurl
                 }   
 }
-Export-ModuleMember -Function GetRequestProperties
 
 
 function Get-AzMigProject {
@@ -188,7 +187,7 @@ function Get-AzMigDiscoveredVMwareVMs {
             
         } 
 
-Export-ModuleMember -Function Get-AzMigDiscoveredVMwareVMs
+
 
 
 
@@ -398,7 +397,6 @@ function Set-AzMigDependencyMappingAgentless {
 	}
 	
 }
-Export-ModuleMember -Function Set-AzMigDependencyMappingAgentless 
 
 
 
@@ -540,4 +538,4 @@ $jsonPayload = @"
 	
 	Remove-Item $temp_filename
 }
-Export-ModuleMember -Function Get-AzMigDependenciesAgentless
+
