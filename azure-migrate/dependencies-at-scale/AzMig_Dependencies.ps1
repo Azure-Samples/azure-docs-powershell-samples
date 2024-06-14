@@ -274,7 +274,7 @@ function Set-AzMigDependencyMappingAgentless {
             if ($jsonPayload.machines.count) {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
-                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $NEW_SDS_APIVERSION;
+                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
                 Write-Debug $requesturi
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
@@ -304,7 +304,7 @@ function Set-AzMigDependencyMappingAgentless {
     if ($jsonPayload.machines.count) {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
-       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $NEW_SDS_APIVERSION;
+       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
        Write-Debug $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
@@ -345,7 +345,7 @@ function Set-AzMigDependencyMappingAgentless {
             if ($jsonPayload.machines.count) {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
-                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $NEW_HyperVandServer_APIVERSION;
+                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
                 Write-Debug "request uri is : $requesturi"
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
@@ -375,7 +375,7 @@ function Set-AzMigDependencyMappingAgentless {
     if ($jsonPayload.machines.count) {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
-       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $NEW_HyperVandServer_APIVERSION;
+       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
        Write-Debug $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
