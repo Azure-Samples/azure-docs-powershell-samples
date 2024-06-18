@@ -28,7 +28,7 @@ guidelines:
   documentation.
 - **Azure PowerShell use only:** Contain commands from the Az PowerShell module.
 - **Sample scripts only:** Samples don't contain PowerShell modules (`psm1` files), binaries, tools,
-  `zip` or `tar.gz` files, or other files that aren't samples.
+  images, `zip` or `tar.gz` files, or other files that aren't samples.
 - **Validated samples:** Validate your samples using the latest version of the Az PowerShell module.
 - **Ongoing support:** Provide ongoing support for your samples and promptly respond to issues and
   PRs.
