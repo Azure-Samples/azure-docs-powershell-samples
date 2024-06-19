@@ -102,12 +102,15 @@ function Get-AzMigDiscoveredVMwareVMs {
                     $ip = [System.Net.IPAddress]::Parse($address.Split('/')[0])
                     if ($ip.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) {
                         return "IPv4"
-                    } elseif ($ip.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) {
+                    }
+                    elseif ($ip.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) {
                         return "IPv6"
-                    } else {
+                    }
+                    else {
                         return "Invalid"
                     }
-                } catch {
+                }
+                catch {
                     return "Invalid"
                 }
             }
@@ -116,7 +119,8 @@ function Get-AzMigDiscoveredVMwareVMs {
             
             if ($ipType -eq "IPv4" -or $ipType -eq "IPv6") {
                 $fil += "| mv-expand IPAddress=IPAddresses | extend Iprange = '$iprange' | extend result = " + $ipType.ToLower() + "_compare(tostring(IPAddress),tostring(Iprange)) | where result == '0' | project-away result,Iprange | summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID) | project-away list_IPAddress"
-            } else {
+            } 
+            else {
                 throw "The IP range is not valid"
             }
         }
