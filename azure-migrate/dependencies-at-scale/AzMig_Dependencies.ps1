@@ -118,7 +118,8 @@ function Get-AzMigDiscoveredVMwareVMs {
             $ipType = CheckIPAddress($iprange)
             
             if ($ipType -eq "IPv4" -or $ipType -eq "IPv6") {
-                $fil += "| mv-expand IPAddress=IPAddresses | extend Iprange = '$iprange' | extend result = " + $ipType.ToLower() + "_compare(tostring(IPAddress),tostring(Iprange)) | where result == '0' | project-away result,Iprange | summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID) | project-away list_IPAddress"
+                $compareFunc = "${ipType.ToString().ToLower()}_compare"
+                $fil += "| mv-expand IPAddress=IPAddresses | extend Iprange = '$iprange' | where $compareFunc(tostring(IPAddress),tostring(Iprange)) == '0' | summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID)|  project-away list_IPAddress, Iprange"
             } 
             else {
                 throw "The IP range is not valid"
