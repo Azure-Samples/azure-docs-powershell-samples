@@ -309,16 +309,16 @@ function Set-AzMigDependencyMappingAgentless {
             continue;     
         }
 
-        $sitename = $Matches[1];
-        Write-Debug "Site: $sitename Machine: $machine";
+        $sitename = $Matches[1]
+        Write-Debug "Site: $sitename Machine: $machine"
 
         if((-not $currentsite) -or ($sitename -eq $currentsite)) {
-            $currentsite = $sitename;
+            $currentsite = $sitename
             $tempobj= [PSCustomObject]@{
                                         machineArmId = $machine
                                         dependencyMapping = $ActionVerb 
                                        }
-            $jsonPayload.machines += $tempobj;
+            $jsonPayload.machines += $tempobj
             continue
         }
 
@@ -342,7 +342,7 @@ function Set-AzMigDependencyMappingAgentless {
             }
 
             #Reset jsonpayload
-            $jsonPayload.machines = @();
+            $jsonPayload.machines = @()
             $tempobj= [PSCustomObject]@{
                                         machineArmId = $machine
                                         dependencyMapping = $ActionVerb 
@@ -358,7 +358,7 @@ function Set-AzMigDependencyMappingAgentless {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
        $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
-       Write-Debug $requesturi
+       Write-Debug -Message $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
 	   $temp = $currentsite -match "\/([^\/]*)\w{4}site$" # Extract the appliance name
@@ -390,7 +390,7 @@ function Set-AzMigDependencyMappingAgentless {
                                         isDependencyMapToBeEnabled = $EnableDependencyMapping 
                                        }
             $jsonPayload.machines += $tempobj
-            continue;
+            continue
         }
 
         #different site. Send update request for previous site and start building request for the new site
@@ -399,7 +399,7 @@ function Set-AzMigDependencyMappingAgentless {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
                 $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
-                Write-Debug "request uri is : $requesturi"
+                Write-Debug -Message "request uri is : $requesturi"
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
                 if ($response) {
@@ -413,12 +413,12 @@ function Set-AzMigDependencyMappingAgentless {
             }
 
             #Reset jsonpayload
-            $jsonPayload.machines = @();
+            $jsonPayload.machines = @()
             $tempobj= [PSCustomObject]@{
                                         machineId = $machine
                                         isDependencyMapToBeEnabled = $EnableDependencyMapping 
                                        }
-            $jsonPayload.machines += $tempobj;
+            $jsonPayload.machines += $tempobj
             $currentsite = $sitename #update current site name
         }
     }
@@ -429,7 +429,7 @@ function Set-AzMigDependencyMappingAgentless {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
        $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
-       Write-Debug $requesturi
+       Write-Debug -Message $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
 	   $temp = $currentsite -match "\/([^\/]*)\w{4}site$" # Extract the appliance name
