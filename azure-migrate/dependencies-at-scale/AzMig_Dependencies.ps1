@@ -1,27 +1,15 @@
 
-<<<<<<< HEAD
-
-=======
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
 function GetRequestProperties()
 {
 
     $ErrorActionPreference = 'Stop'
     
 
-<<<<<<< HEAD
     if(-not (Get-Module -Name Az.Accounts)) {
         Import-Module -Name Az.Accounts
     }
     
     if ((Get-Module -Name Az.Accounts).Version -lt "2.2.0") {
-=======
-    if(-not (Get-Module Az.Accounts)) {
-        Import-Module Az.Accounts
-    }
-    
-    if ((Get-Module Az.Accounts).Version -lt "2.2.0") {
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
         throw "At least Az.Accounts 2.2.0 is required, please update before continuing."
     }
     
@@ -33,11 +21,7 @@ function GetRequestProperties()
     $TenantId = $CurrentContext.Tenant.Id
     $UserId = $CurrentContext.Account.Id
     if ((-not $TenantId) -or (-not $UserId)) {
-<<<<<<< HEAD
         throw "Tenant not selected. Use Set-AzContext to select a subscription"
-=======
-        throw "Tenant not selected. Use Select-AzSubscription to select a subscription"
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
     }
 
 	$Environment = $CurrentContext.Environment.Name
@@ -45,11 +29,7 @@ function GetRequestProperties()
 
     $SubscriptionId = $CurrentContext.Subscription.Id
     if (-not $SubscriptionId) {
-<<<<<<< HEAD
         throw "No subscription selected. Use Set-AzContext to select a subscription"
-=======
-        throw "No subscription selected. Use Select-AzSubscription to select a subscription"
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
     }
 	
 	
@@ -105,63 +85,8 @@ function Get-AzMigDiscoveredVMwareVMs {
         [Parameter(Mandatory = $true)][string]$ResourceGroupName,
         [Parameter(Mandatory = $true)][string]$ProjectName,
         [Parameter(Mandatory = $true)][string]$OutputCsvFile = "VMwareVMs.csv",
-<<<<<<< HEAD
 	    [Parameter()][string]$ApplianceName = $null
     )
-=======
-        [Parameter()][HashTable]$Filter = $null,
-	    [Parameter()][string]$ApplianceName = $null
-    )
-    $fil=""
-    if($Filter){
-     
-       foreach($Key in $Filter.Keys){
-          $Val=$Filter[$Key]
-           if ($Key -eq "IPAddresses") {
-                   $iprange = "$Val"
-                   # Function to check if the IP address is IPv4
-                   function IsIPv4($address) {
-                     try {
-                        [System.Net.IPAddress]::Parse($address.Split('/')[0]).AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork
-                         } catch {
-                        return $false
-                         }
-                    }
-
-                    # Function to check if the IP address is IPv6
-                    function IsIPv6($address) {
-                    try {
-                        [System.Net.IPAddress]::Parse($address.Split('/')[0]).AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6
-                        } catch {
-                        return $false
-                        }
-                    }
-
-                    if (IsIPv4($iprange)) {
-                    # Handling IPv4 addresses
-                    $fil+= "| mv-expand IPAddress=IPAddresses|extend Iprange = '$iprange'| extend result = ipv4_compare(tostring(IPAddress),tostring(Iprange))| where result == '0'| project-away result,Iprange|summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime), tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID)|project-away list_IPAddress"
-                    } elseif (IsIPv6($iprange)) {
-                    # Handling IPv6 addresses
-                    $fil+= "| mv-expand IPAddress=IPAddresses|extend Iprange = '$iprange'| extend result = ipv6_compare(tostring(IPAddress),tostring(Iprange))| where result == '0'| project-away result,Iprange|summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime), tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID)|project-away list_IPAddress"
-                    } else {
-                    throw "The IP range is not valid"
-                    }
-                }
-           elseif ($Key -eq "osType" -or $Key -eq "osName" -or $Key -eq "osArchitecture" -or $Key -eq "osVersion") {
-                 $fil+="| where "
-                $fil += "OperatingSystem.$Key == '$Val'"
-           }
-           elseif($Key -eq "ServerName" -or $Key -eq "Source" -or $Key -eq "DependencyStatus" -or $Key -eq "PowerStatus") {
-                 $fil+="| where "
-                $fil += "$Key == '$Val'"
-           }
-           else{
-               $fil+="| where "
-              $fil += "Tags.$Key == '$Val'"
-           }
-       }
-    }
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
 
     if(-not (Test-Path -IsValid -Path $OutputCsvFile)) {
         throw "Output CSV file path is not valid"
@@ -203,36 +128,23 @@ function Get-AzMigDiscoveredVMwareVMs {
     #If Appliance name is passed get data only for that appliance
     #If Appliance name is not passed , get data for all appliances in that project
     if (-not $ApplianceName){
-<<<<<<< HEAD
 	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}
     }
     else{
 	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}
     }
     Write-Debug -Message $vmwareappliancemap.count
-=======
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}}else{
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}}
-    Write-Debug $vmwareappliancemap.count
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
     if($vmwareappliancemap) {$vmwareappliancemap | Out-String | Write-Debug};
     if (-not $vmwareappliancemap.count) {throw "No VMware VMs discovered in project"};
     
 	Write-Host "Please wait while the list of discovered machines is downloaded..."
     
     foreach ($item in $vmwareappliancemap.GetEnumerator()) {
-<<<<<<< HEAD
         $SiteId = $item.Value
         $appliancename = $item.Key
         Write-Debug -Message "Get machines for Site $SiteId"
-         $query1 = "migrateresources | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')|mv-expand properties.networkAdapters| extend  IPAddressList = properties_networkAdapters.ipAddressList, ServerName = properties.displayName|summarize IPadresses=make_list(IPAddressList) by name| join kind = inner (migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')) on name| join kind=leftouter ( migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')| mv-expand properties.dependencyMapDiscovery.errors| extend errorid=properties_dependencyMapDiscovery_errors.id,errorcode = properties_dependencyMapDiscovery_errors.code,errormessage=properties_dependencyMapDiscovery_errors.message| extend Error = strcat('ID',':',errorid,',',' ','Code',':',errorcode,',',' ','Message',':',errormessage)| summarize Error = make_list(Error) by name) on name| project-away name1,name2|extend ServerName=properties.displayName| extend DepError = strcat('DependencyScopeStatus',':',properties.dependencyMapDiscovery.discoveryScopeStatus,' ','Errors',':',Error)| extend Status = iff(array_length(properties.dependencyMapDiscovery.errors) == 0,properties.dependencyMapping,'ValidationFailed')| extend ServerName=ServerName,IPAddresses=IPadresses,Source=properties.vCenterFQDN,DependencyStatus=Status,DependencyErrors=DepError,ErrorTimeStamp=properties.updatedTimestamp,DependencyStartTime=properties.dependencyMappingStartTime,OperatingSystem=properties.guestOSDetails,PowerStatus=properties.powerStatus,Appliance='$appliancename',FriendlyNameOfCredentials=properties.dependencyMapDiscovery.hydratedRunAsAccountId,Tags=tags,ARMID=id| project ServerName,Source,DependencyStatus,DependencyErrors,ErrorTimeStamp,DependencyStartTime,OperatingSystem,PowerStatus,Appliance,FriendlyNameOfCredentials,Tags,ARMID"
-=======
-        $SiteId = $item.Value;
-        $appliancename = $item.Key
-        Write-Debug "Get machines for Site $SiteId"
-        
-        $query1 = "migrateresources | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')|mv-expand properties.networkAdapters| extend  IPAddressList = properties_networkAdapters.ipAddressList, ServerName = properties.displayName|summarize IPadresses=make_list(IPAddressList) by name| join kind = inner (migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')) on name| join kind=leftouter ( migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')| mv-expand properties.dependencyMapDiscovery.errors| extend errorid=properties_dependencyMapDiscovery_errors.id,errorcode = properties_dependencyMapDiscovery_errors.code,errormessage=properties_dependencyMapDiscovery_errors.message| extend Error = strcat('ID',':',errorid,',',' ','Code',':',errorcode,',',' ','Message',':',errormessage)| summarize Error = make_list(Error) by name) on name| project-away name1,name2|extend ServerName=properties.displayName| extend DepError = strcat('DependencyScopeStatus',':',properties.dependencyMapDiscovery.discoveryScopeStatus,' ','Errors',':',Error)| extend Status = iff(array_length(properties.dependencyMapDiscovery.errors) == 0,properties.dependencyMapping,'ValidationFailed')| extend ServerName=ServerName,IPAddresses=IPadresses,Source=properties.vCenterFQDN,DependencyStatus=Status,DependencyErrors=DepError,ErrorTimeStamp=properties.updatedTimestamp,DependencyStartTime=properties.dependencyMappingStartTime,OperatingSystem=properties.guestOSDetails,PowerStatus=properties.powerStatus,Appliance='$appliancename',FriendlyNameOfCredentials=properties.dependencyMapDiscovery.hydratedRunAsAccountId,Tags=tags,ARMID=id"+"$fil"+"| project ServerName,Source,DependencyStatus,DependencyErrors,ErrorTimeStamp,DependencyStartTime,OperatingSystem,PowerStatus,Appliance,FriendlyNameOfCredentials,Tags,ARMID"
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
+         $query1 = "migrateresources | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')|mv-expand properties.networkAdapters| extend  IPAddressList = properties_networkAdapters.ipAddressList, ServerName = properties.displayName|summarize IPAddresses=make_list(IPAddressList) by name| join kind = inner (migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')) on name| join kind=leftouter ( migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')| mv-expand properties.dependencyMapDiscovery.errors| extend errorid=properties_dependencyMapDiscovery_errors.id,errorcode = properties_dependencyMapDiscovery_errors.code,errormessage=properties_dependencyMapDiscovery_errors.message| extend Error = strcat('ID',':',errorid,',',' ','Code',':',errorcode,',',' ','Message',':',errormessage)| summarize Error = make_list(Error) by name) on name| project-away name1,name2|extend ServerName=properties.displayName| extend DependencyErrors = strcat('DependencyScopeStatus',':',properties.dependencyMapDiscovery.discoveryScopeStatus,' ','Errors',':',Error)| extend DependencyStatus = iff(array_length(properties.dependencyMapDiscovery.errors) == 0,properties.dependencyMapping,'ValidationFailed')| extend Source=properties.vCenterFQDN,ErrorTimeStamp=properties.updatedTimestamp,DependencyStartTime=properties.dependencyMappingStartTime,OperatingSystem=properties.guestOSDetails,PowerStatus=properties.powerStatus,Appliance='$appliancename',FriendlyNameOfCredentials=properties.dependencyMapDiscovery.hydratedRunAsAccountId,Tags=tags,ARMID=id| project ServerName,Source,DependencyStatus,DependencyErrors,ErrorTimeStamp,DependencyStartTime,OperatingSystem,PowerStatus,Appliance,FriendlyNameOfCredentials,Tags,ARMID"
+
 
 		Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
         $batchSize = 100
@@ -251,11 +163,7 @@ function Get-AzMigDiscoveredVMwareVMs {
           $kqlResult += $graphResult.data
         
           if ($graphResult.data.Count -lt $batchSize) {
-<<<<<<< HEAD
             break
-=======
-            break;
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
           }
           $skipResult += $skipResult + $batchSize
         }
@@ -265,12 +173,8 @@ function Get-AzMigDiscoveredVMwareVMs {
                     Write-Host "Machines discovered for $appliancename"
                     $kqlResult | Export-Csv -NoTypeInformation -Path $OutputCsvFile -Append
                     Write-Host "List of machines saved to" $OutputCsvFile
-<<<<<<< HEAD
         } 
         else {
-=======
-        } else {
->>>>>>> bdd3d2f22fe523188e89af5163b38d1e3291b219
             Write-Host "No results found."
         }
             
