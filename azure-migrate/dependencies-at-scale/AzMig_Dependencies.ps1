@@ -265,30 +265,89 @@ function Set-AzMigDependencyMappingAgentless {
     
 	$VMDetails = Import-CSV $InputCsvFile
 	
-	if(-not ($VMDetails[0].psobject.Properties.Name.ToLower().contains("arm id")) ) {
-		throw "Input CSV file does not contain required column 'ARM ID'"
+	if(-not ($VMDetails[0].psobject.Properties.Name.ToLower().contains("armid")) ) {
+		throw "Input CSV file does not contain required column 'ARMID'"
 	}
 
     if($Enable)
     { 
         $ActionVerb = "Enabled";
-		$EnableDependencyMapping = $true;
-    } elseif ($Disable) {
+		$EnableDependencyMapping = $true
+    } 
+    elseif ($Disable) {
         $ActionVerb = "Disabled";
-		$EnableDependencyMapping = $false;
-    } else {
+		$EnableDependencyMapping = $false
+    } 
+    else {
         throw "Error"
     }
 
-    $MaxLimit = 1000;
     $Properties = GetRequestProperties
-
-    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARM ID")
-    
-
-    if ($VMs.count -gt $MaxLimit) {
-        throw "Number of rows in CSV exceeds maximum limit of $MaxLimit"
+    if ($ActionVerb -eq "Enabled") {
+        $machinesinfo = @{}
+        foreach ($machine in $VMDetails) {
+            $vcenterfqdn = $machine.Source
+            $machinetype = $null
+            $siteid = $machine.ARMID
+            
+            if ($siteid -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
+                $machinetype = "vmware"
+            } 
+            elseif ($siteid -match "/subscriptions/.*/HyperVSites/([^/]*)\w{4}site") {
+                $machinetype = "hyperv"
+            } 
+            elseif ($siteid -match "/subscriptions/.*/ServerSites/([^/]*)\w{4}site") {
+                $machinetype = "server"
+            }
+            
+            if (-not $machinesinfo.ContainsKey($vcenterfqdn)) {
+                $machinesinfo[$vcenterfqdn] = @{
+                     "Type" = $machinetype
+                     "Count" = 0
+                    "numberofmachinesthatcanbeenabled" = 0
+                }
+            }
+            $machinesinfo[$vcenterfqdn]["Count"]++
+        }
+        
+        foreach ($Key in $machinesinfo.Keys) {
+            $vcentername = $Key
+            $type = $machinesinfo[$vcentername]["Type"]
+                if ($type -eq "vmware") {
+                    $query = "migrateresources | where type == 'microsoft.offazure/vmwaresites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
+                    $result = Search-AzGraph -Query $query
+                    if ($result) {
+                        $Numofvmwareenabledalready = $result.count_
+                        $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 3000 - $Numofvmwareenabledalready
+                    }
+                } 
+                elseif ($type -eq "hyperv") {
+                    $query = "migrateresources | where type == 'microsoft.offazure/hypervsites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
+                    $result = Search-AzGraph -Query $query
+                    if ($result) {
+                        $Numofhypervenabledalready = $result.count_
+                        $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 1000 - $Numofhypervenabledalready
+                    }
+                } 
+                elseif ($type -eq "server") {
+                    $query = "migrateresources | where type == 'microsoft.offazure/serversites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
+                    $result = Search-AzGraph -Query $query
+                    if ($result) {
+                        $Numofserverenabledalready = $result.count_
+                        $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 1000 - $Numofserverenabledalready
+                    }
+                }
+            
+        }
+        
+        foreach ($Key in $machinesinfo.Keys) {
+            if ($machinesinfo[$Key]["Count"] -gt $machinesinfo[$Key]["numberofmachinesthatcanbeenabled"]) {
+                throw "Maximum limit exceeded"
+            }
+        }
     }
+    
+    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARMID")
     
     $VMs = $VMs | sort
     
@@ -305,7 +364,7 @@ function Set-AzMigDependencyMappingAgentless {
             continue;     
         }
 
-        $sitename = $Matches[1];
+        $sitename = $Matches[1]
         Write-Debug "Site: $sitename Machine: $machine";
 
         if((-not $currentsite) -or ($sitename -eq $currentsite)) {
@@ -314,8 +373,8 @@ function Set-AzMigDependencyMappingAgentless {
                                         machineArmId = $machine
                                         dependencyMapping = $ActionVerb 
                                        }
-            $jsonPayload.machines += $tempobj;
-            continue;
+            $jsonPayload.machines += $tempobj
+            continue
         }
 
         #different site. Send update request for previous site and start building request for the new site
@@ -324,7 +383,7 @@ function Set-AzMigDependencyMappingAgentless {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
                 $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
-                Write-Debug $requesturi
+                Write-Debug -Message $requesturi
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
                 if ($response) {
@@ -338,12 +397,12 @@ function Set-AzMigDependencyMappingAgentless {
             }
 
             #Reset jsonpayload
-            $jsonPayload.machines = @();
+            $jsonPayload.machines = @()
             $tempobj= [PSCustomObject]@{
                                         machineArmId = $machine
                                         dependencyMapping = $ActionVerb 
                                        }
-            $jsonPayload.machines += $tempobj;
+            $jsonPayload.machines += $tempobj
             $currentsite = $sitename #update current site name
         }
     }
@@ -354,7 +413,7 @@ function Set-AzMigDependencyMappingAgentless {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
        $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
-       Write-Debug $requesturi
+       Write-Debug -Message $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
 	   $temp = $currentsite -match "\/([^\/]*)\w{4}site$" # Extract the appliance name
@@ -368,7 +427,7 @@ function Set-AzMigDependencyMappingAgentless {
 		}
 
     #Reset jsonpayload and loop through the same machines , this time for hyperV and server fabric
-    $jsonPayload.machines = @();
+    $jsonPayload.machines = @()
 
     $currentsite = $null
     foreach ($machine in $VMs) {
@@ -376,8 +435,8 @@ function Set-AzMigDependencyMappingAgentless {
             continue;     
         }
 
-        $sitename = $Matches[1];
-        Write-Debug "Site: $sitename Machine: $machine";
+        $sitename = $Matches[1]
+        Write-Debug "Site: $sitename Machine: $machine"
 
         if((-not $currentsite) -or ($sitename -eq $currentsite)) {
             $currentsite = $sitename;
@@ -385,8 +444,8 @@ function Set-AzMigDependencyMappingAgentless {
                                         machineId = $machine
                                         isDependencyMapToBeEnabled = $EnableDependencyMapping 
                                        }
-            $jsonPayload.machines += $tempobj;
-            continue;
+            $jsonPayload.machines += $tempobj
+            continue
         }
 
         #different site. Send update request for previous site and start building request for the new site
@@ -395,7 +454,7 @@ function Set-AzMigDependencyMappingAgentless {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
                 $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
-                Write-Debug "request uri is : $requesturi"
+                Write-Debug -Message "request uri is : $requesturi"
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
                 if ($response) {
@@ -409,12 +468,12 @@ function Set-AzMigDependencyMappingAgentless {
             }
 
             #Reset jsonpayload
-            $jsonPayload.machines = @();
+            $jsonPayload.machines = @()
             $tempobj= [PSCustomObject]@{
                                         machineId = $machine
                                         isDependencyMapToBeEnabled = $EnableDependencyMapping 
                                        }
-            $jsonPayload.machines += $tempobj;
+            $jsonPayload.machines += $tempobj
             $currentsite = $sitename #update current site name
         }
     }
@@ -425,7 +484,7 @@ function Set-AzMigDependencyMappingAgentless {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
        $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
-       Write-Debug $requesturi
+       Write-Debug -Message $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
 	   $temp = $currentsite -match "\/([^\/]*)\w{4}site$" # Extract the appliance name
