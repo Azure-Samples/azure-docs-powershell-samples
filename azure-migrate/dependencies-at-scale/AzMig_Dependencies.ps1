@@ -267,8 +267,7 @@ function Set-AzMigDependencyMappingAgentless {
 		throw "Input CSV file does not contain required column 'ARMID'"
 	}
 
-    if($Enable)
-    { 
+    if($Enable){ 
         $ActionVerb = "Enabled";
 		$EnableDependencyMapping = $true
     } 
@@ -363,10 +362,10 @@ function Set-AzMigDependencyMappingAgentless {
         }
 
         $sitename = $Matches[1]
-        Write-Debug "Site: $sitename Machine: $machine";
+        Write-Debug "Site: $sitename Machine: $machine"
 
         if((-not $currentsite) -or ($sitename -eq $currentsite)) {
-            $currentsite = $sitename;
+            $currentsite = $sitename
             $tempobj= [PSCustomObject]@{
                                         machineArmId = $machine
                                         dependencyMapping = $ActionVerb 
@@ -638,7 +637,7 @@ $jsonPayload = @"
 	
 	Write-Host "Please wait while the downloaded data is processed for PowerBI..."
 	
-	Import-Csv $temp_filename | Select-Object "Source server name", "Source IP", "Source application", "Source process", "Destination server name", "Destination IP", "Destination application", "Destination process", "Destination port" | Sort-Object * -Unique -Descending | Export-Csv -NoTypeInformation $filename
+	Import-Csv -Path $temp_filename | Select-Object -Property "Source server name", "Source IP", "Source application", "Source process", "Destination server name", "Destination IP", "Destination application", "Destination process", "Destination port" | Sort-Object -Property * -Unique -Descending | Export-Csv -NoTypeInformation -Path $filename
 	
 	Write-Host "Dependencies data for appliance " $Appliance " saved in " $filename 
 	
