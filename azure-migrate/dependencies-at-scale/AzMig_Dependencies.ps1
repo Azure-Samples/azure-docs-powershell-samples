@@ -126,7 +126,7 @@ function Get-AzMigDiscoveredVMwareVMs {
         }
            elseif ($Key -eq "osType" -or $Key -eq "osName" -or $Key -eq "osArchitecture" -or $Key -eq "osVersion") {
                  $fil+="| where "
-                $fil += "OperatingSystem.$Key == '$Val'"
+                $fil += "OperatingSystem.todynamic($Key) == '$Val'"
            }
            elseif($Key -eq "ServerName" -or $Key -eq "Source" -or $Key -eq "DependencyStatus" -or $Key -eq "PowerStatus") {
                  $fil+="| where "
