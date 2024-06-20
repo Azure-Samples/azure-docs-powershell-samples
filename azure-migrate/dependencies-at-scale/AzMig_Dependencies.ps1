@@ -143,7 +143,32 @@ function Get-AzMigDiscoveredVMwareVMs {
         $SiteId = $item.Value
         $appliancename = $item.Key
         Write-Debug -Message "Get machines for Site $SiteId"
-          $query1 = "migrateresources | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')|mv-expand properties.networkAdapters| extend  IPAddressList = properties_networkAdapters.ipAddressList|summarize IPAddresses=make_list(IPAddressList) by name| join kind = inner (migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')) on name| join kind=leftouter ( migrateresources|  where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')| mv-expand properties.dependencyMapDiscovery.errors| extend errorid=properties_dependencyMapDiscovery_errors.id,errorcode = properties_dependencyMapDiscovery_errors.code,errormessage=properties_dependencyMapDiscovery_errors.message| extend Error = strcat('ID',':',errorid,',',' ','Code',':',errorcode,',',' ','Message',':',errormessage)| summarize Error = make_list(Error) by name) on name| project-away name1,name2|extend ServerName=properties.displayName, DependencyErrors = strcat('DependencyScopeStatus',':',properties.dependencyMapDiscovery.discoveryScopeStatus,' ','Errors',':',Error), DependencyStatus = iff(array_length(properties.dependencyMapDiscovery.errors) == 0,properties.dependencyMapping,'ValidationFailed'),Source=properties.vCenterFQDN,ErrorTimeStamp=properties.updatedTimestamp,DependencyStartTime=properties.dependencyMappingStartTime,OperatingSystem=properties.guestOSDetails,PowerStatus=properties.powerStatus,Appliance='$appliancename',FriendlyNameOfCredentials=properties.dependencyMapDiscovery.hydratedRunAsAccountId,Tags=tags,ARMID=id| project ServerName,Source,DependencyStatus,DependencyErrors,ErrorTimeStamp,DependencyStartTime,OperatingSystem,PowerStatus,Appliance,FriendlyNameOfCredentials,Tags,ARMID"
+        $query1 = "
+        migrateresources
+        | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')
+        | extend ServerName = properties.displayName,
+                 DependencyStatus = iff(array_length(properties.dependencyMapDiscovery.errors) == 0, properties.dependencyMapping, 'ValidationFailed'),
+                 Source = properties.vCenterFQDN,
+                 ErrorTimeStamp = properties.updatedTimestamp,
+                 DependencyStartTime = properties.dependencyMappingStartTime,
+                 OperatingSystem = properties.guestOSDetails,
+                 PowerStatus = properties.powerStatus,
+                 Appliance = '$appliancename',
+                 FriendlyNameOfCredentials = properties.dependencyMapDiscovery.hydratedRunAsAccountId,
+                 Tags = tags,
+                 ARMID = id
+        | mv-expand properties.networkAdapters
+        | extend IPAddressList = properties_networkAdapters.ipAddressList
+        | summarize IPAddresses = make_list(IPAddressList) by name,tostring(ServerName),tostring(DependencyStatus),tostring(Source),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID),tostring(properties.dependencyMapDiscovery)
+        |join kind=leftouter (
+            migrateresources
+            | mv-expand properties.dependencyMapDiscovery.errors
+            | extend ErrorDetails = strcat('ID:', properties_dependencyMapDiscovery_errors.id, ', Code:', properties_dependencyMapDiscovery_errors.code, ', Message:', properties_dependencyMapDiscovery_errors.message)
+            | summarize Error = make_list(ErrorDetails) by name
+        ) on name
+        |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error)
+        | project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID
+        "
 
 
 		Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
