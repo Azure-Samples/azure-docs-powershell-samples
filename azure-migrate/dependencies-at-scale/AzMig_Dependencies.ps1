@@ -323,6 +323,7 @@ function Set-AzMigDependencyMappingAgentless {
     $jsonPayload = $jsonPayload | ConvertFrom-Json
 
     $currentsite = $null
+    
     foreach ($machine in $VMs) {
         if (-not ($machine -match "(/subscriptions/.*\/VMwareSites/([^\/]*)\w{4}site)")) {
             continue;     
