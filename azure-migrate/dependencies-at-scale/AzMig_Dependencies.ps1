@@ -192,57 +192,6 @@ function Get-AzMigDiscoveredVMwareVMs {
         [Parameter()][HashTable]$Filter = $null,
 	    [Parameter()][string]$ApplianceName = $null
     )
-    $fil=""
-    if($Filter){
-     
-       foreach($Key in $Filter.Keys){
-          $Val=$Filter[$Key]
-          if ($Key -eq "IPAddresses") {
-            $iprange = "$Val"
-        
-            # Function to check if the IP address is IPv4 or IPv6
-            function CheckIPAddress($address) {
-                try {
-                    $ip = [System.Net.IPAddress]::Parse($address.Split('/')[0])
-                    if ($ip.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) {
-                        return "IPv4"
-                    }
-                    elseif ($ip.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) {
-                        return "IPv6"
-                    }
-                    else {
-                        return "Invalid"
-                    }
-                }
-                catch {
-                    return "Invalid"
-                }
-            }
-        
-            $ipType = CheckIPAddress($iprange)
-            
-            if ($ipType -eq "IPv4" -or $ipType -eq "IPv6") {
-                $fil += "| mv-expand IPAddress=IPAddresses | extend Iprange = '$iprange' | extend result = " + $ipType.ToLower() + "_compare(tostring(IPAddress),tostring(Iprange)) | where result == '0' | project-away result,Iprange | summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID) | project-away list_IPAddress"
-            } 
-            else {
-                throw "The IP range is not valid"
-            }
-        }
-           elseif ($Key -eq "osType" -or $Key -eq "osName" -or $Key -eq "osArchitecture" -or $Key -eq "osVersion") {
-                 $fil+="| where "
-                $fil += "OperatingSystem.$Key == '$Val'"
-           }
-           elseif($Key -eq "ServerName" -or $Key -eq "Source" -or $Key -eq "DependencyStatus" -or $Key -eq "PowerStatus") {
-                 $fil+="| where "
-                $fil += "$Key == '$Val'"
-           }
-           else{
-               $fil+="| where "
-              $fil += "Tags.$Key == '$Val'"
-           }
-       }
-    }
-
     if(-not (Test-Path -IsValid -Path $OutputCsvFile)) {
         throw "Output CSV file path is not valid"
     }
@@ -307,12 +256,9 @@ function Get-AzMigDiscoveredVMwareVMs {
         } 
         else {
             Write-Host "No results found."
-        }
-            
-            }
-        
-            
-        } 
+        }            
+            }         
+} 
 
 
 
