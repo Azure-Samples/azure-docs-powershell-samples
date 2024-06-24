@@ -78,6 +78,110 @@ function Get-AzMigProject {
 
 }
 
+function Get-FilteredMachines {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true)][string]$SiteId,
+        [Parameter(Mandatory = $true)][string]$appliancename,
+        [Parameter()][Hashtable]$Filter,
+        [Parameter(Mandatory = $true)][string]$OutputCsvFile
+    )
+    $filterquery=""
+    if($Filter){   
+        foreach($Key in $Filter.Keys){
+           $Val=$Filter[$Key]
+           if ($Key -eq "IPAddresses") {
+             $iprange = "$Val"
+         
+             # Function to check if the IP address is IPv4 or IPv6
+             function CheckIPAddress($address) {
+                 try {
+                     $ip = [System.Net.IPAddress]::Parse($address.Split('/')[0])
+                     if ($ip.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) {
+                         return "IPv4"
+                     }
+                     elseif ($ip.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) {
+                         return "IPv6"
+                     }
+                     else {
+                         return "Invalid"
+                     }
+                 }
+                 catch {
+                     return "Invalid"
+                 }
+             }
+         
+             $ipType = CheckIPAddress($iprange)
+             
+             if ($ipType -eq "IPv4" -or $ipType -eq "IPv6") {
+                 $filterquery += "| mv-expand IPAddress=IPAddresses | extend Iprange = '$iprange' | extend result = " + $ipType.ToLower() + "_compare(tostring(IPAddress),tostring(Iprange)) | where result == '0' | project-away result,Iprange | summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID) | project-away list_IPAddress"
+             } 
+             else {
+                 throw "The IP range is not valid"
+             }
+         }
+            elseif ($Key -eq "osType" -or $Key -eq "osName" -or $Key -eq "osArchitecture" -or $Key -eq "osVersion") {
+                  $filterquery+="| where "
+                 $filterquery += "OperatingSystem.$Key == '$Val'"
+            }
+            elseif($Key -eq "ServerName" -or $Key -eq "Source" -or $Key -eq "DependencyStatus" -or $Key -eq "PowerStatus") {
+                  $filterquery+="| where "
+                 $filterquery += "$Key == '$Val'"
+            }
+            else{
+                $filterquery+="| where "
+               $filterquery += "Tags.$Key == '$Val'"
+            }
+        }
+     }
+     $query = "
+migrateresources
+| where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')
+| extend ServerName = properties.displayName,
+         DependencyStatus = iff(array_length(properties.dependencyMapDiscovery.errors) == 0, properties.dependencyMapping, 'ValidationFailed'),
+         Source = properties.vCenterFQDN,
+         ErrorTimeStamp = properties.updatedTimestamp,
+         DependencyStartTime = properties.dependencyMappingStartTime,
+         PowerStatus = properties.powerStatus,
+         Appliance = '$appliancename',
+         FriendlyNameOfCredentials = properties.dependencyMapDiscovery.hydratedRunAsAccountId,
+         ARMID = id
+| mv-expand properties.networkAdapters
+| extend IPAddressList = properties_networkAdapters.ipAddressList
+| summarize IPAddresses = make_list(IPAddressList) by name,tostring(ServerName),tostring(DependencyStatus),tostring(Source),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(tags),tostring(ARMID),tostring(properties.dependencyMapDiscovery),tostring(properties.guestOSDetails)
+|join kind=leftouter (
+    migrateresources
+    | mv-expand properties.dependencyMapDiscovery.errors
+    | extend ErrorDetails = strcat('ID:', properties_dependencyMapDiscovery_errors.id, ', Code:', properties_dependencyMapDiscovery_errors.code, ', Message:', properties_dependencyMapDiscovery_errors.message)
+    | summarize Error = make_list(ErrorDetails) by name
+) on name
+|extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)"+"$fil"+
+"| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID
+"
+Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
+        $batchSize = 100
+        $skipResult = 0
+        [System.Collections.Generic.List[string]]$kqlResult
+        
+        while ($true) {
+        
+          if ($skipResult -gt 0) {
+            $graphResult = Search-AzGraph -Query $query -First $batchSize -SkipToken $graphResult.SkipToken
+          }
+          else {
+            $graphResult = Search-AzGraph -Query $query -First $batchSize
+          }
+        
+          $kqlResult += $graphResult.data
+        
+          if ($graphResult.data.Count -lt $batchSize) {
+            break
+          }
+          $skipResult += $skipResult + $batchSize
+        }
+        return $kqlResult
+}
 
 function Get-AzMigDiscoveredVMwareVMs {
     [CmdletBinding()]
@@ -194,54 +298,7 @@ function Get-AzMigDiscoveredVMwareVMs {
         $SiteId = $item.Value
         $appliancename = $item.Key
         Write-Debug -Message "Get machines for Site $SiteId"
-        
-        $query = "
-migrateresources
-| where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')
-| extend ServerName = properties.displayName,
-         DependencyStatus = iff(array_length(properties.dependencyMapDiscovery.errors) == 0, properties.dependencyMapping, 'ValidationFailed'),
-         Source = properties.vCenterFQDN,
-         ErrorTimeStamp = properties.updatedTimestamp,
-         DependencyStartTime = properties.dependencyMappingStartTime,
-         PowerStatus = properties.powerStatus,
-         Appliance = '$appliancename',
-         FriendlyNameOfCredentials = properties.dependencyMapDiscovery.hydratedRunAsAccountId,
-         ARMID = id
-| mv-expand properties.networkAdapters
-| extend IPAddressList = properties_networkAdapters.ipAddressList
-| summarize IPAddresses = make_list(IPAddressList) by name,tostring(ServerName),tostring(DependencyStatus),tostring(Source),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(tags),tostring(ARMID),tostring(properties.dependencyMapDiscovery),tostring(properties.guestOSDetails)
-|join kind=leftouter (
-    migrateresources
-    | mv-expand properties.dependencyMapDiscovery.errors
-    | extend ErrorDetails = strcat('ID:', properties_dependencyMapDiscovery_errors.id, ', Code:', properties_dependencyMapDiscovery_errors.code, ', Message:', properties_dependencyMapDiscovery_errors.message)
-    | summarize Error = make_list(ErrorDetails) by name
-) on name
-|extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)"+"$fil"+
-"| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID
-"
-
-		Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
-        $batchSize = 100
-        $skipResult = 0
-        [System.Collections.Generic.List[string]]$kqlResult
-        
-        while ($true) {
-        
-          if ($skipResult -gt 0) {
-            $graphResult = Search-AzGraph -Query $query -First $batchSize -SkipToken $graphResult.SkipToken
-          }
-          else {
-            $graphResult = Search-AzGraph -Query $query -First $batchSize
-          }
-        
-          $kqlResult += $graphResult.data
-        
-          if ($graphResult.data.Count -lt $batchSize) {
-            break
-          }
-          $skipResult += $skipResult + $batchSize
-        }
-
+        $kqlResult = Get-FilteredMachines -SiteId '$SiteId' -appliancename '$appliancename' -Filter '$Filter' -OutputCsvFile '$OutputCsvFile'
         if ($kqlResult) {
              $appliancename = $item.Key
                     Write-Host "Machines discovered for $appliancename"
