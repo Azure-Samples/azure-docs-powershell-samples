@@ -302,82 +302,26 @@ function Set-AzMigDependencyMappingAgentless {
         throw "Error"
     }
 
+    
+    $MaxLimit = 1000;
     $Properties = GetRequestProperties
-    if ($ActionVerb -eq "Enabled") {
-        $machinesinfo = @{}
-        foreach ($machine in $VMDetails) {
-            $vcenterfqdn = $machine.Source
-            $machinetype = $null
-            $siteid = $machine.ARMID
-            
-            if ($siteid -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
-                $machinetype = "vmware"
-            } 
-            elseif ($siteid -match "/subscriptions/.*/HyperVSites/([^/]*)\w{4}site") {
-                $machinetype = "hyperv"
-            } 
-            elseif ($siteid -match "/subscriptions/.*/ServerSites/([^/]*)\w{4}site") {
-                $machinetype = "server"
-            }
-            
-            if (-not $machinesinfo.ContainsKey($vcenterfqdn)) {
-                $machinesinfo[$vcenterfqdn] = @{
-                     "Type" = $machinetype
-                     "Count" = 0
-                    "numberofmachinesthatcanbeenabled" = 0
-                }
-            }
-            $machinesinfo[$vcenterfqdn]["Count"]++
-        }
-        
-        foreach ($Key in $machinesinfo.Keys) {
-            $vcentername = $Key
-            $type = $machinesinfo[$vcentername]["Type"]
-                if ($type -eq "vmware") {
-                    $query = "migrateresources | where type == 'microsoft.offazure/vmwaresites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
-                    $result = Search-AzGraph -Query $query
-                    if ($result) {
-                        $Numofvmwareenabledalready = $result.count_
-                        $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 3000 - $Numofvmwareenabledalready
-                    }
-                } 
-                elseif ($type -eq "hyperv") {
-                    $query = "migrateresources | where type == 'microsoft.offazure/hypervsites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
-                    $result = Search-AzGraph -Query $query
-                    if ($result) {
-                        $Numofhypervenabledalready = $result.count_
-                        $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 1000 - $Numofhypervenabledalready
-                    }
-                } 
-                elseif ($type -eq "server") {
-                    $query = "migrateresources | where type == 'microsoft.offazure/serversites/machines' and properties.vCenterFQDN == '$vcentername' | summarize count() by tostring(properties.dependencyMapping) | where properties_dependencyMapping == 'Enabled'"
-                    $result = Search-AzGraph -Query $query
-                    if ($result) {
-                        $Numofserverenabledalready = $result.count_
-                        $machinesinfo[$vcentername]["numberofmachinesthatcanbeenabled"] = 1000 - $Numofserverenabledalready
-                    }
-                }
-            
-        }
-        
-        foreach ($Key in $machinesinfo.Keys) {
-            if ($machinesinfo[$Key]["Count"] -gt $machinesinfo[$Key]["numberofmachinesthatcanbeenabled"]) {
-                throw "Maximum limit exceeded"
-            }
-        }
+
+    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARM ID")
+
+
+    if ($VMs.count -gt $MaxLimit) {
+        throw "Number of rows in CSV exceeds maximum limit of $MaxLimit"
     }
-    
-    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARMID")
-    
+
     $VMs = $VMs | sort
-    
+
     $jsonPayload = @"
     {
         "machines": []
     }
 "@
     $jsonPayload = $jsonPayload | ConvertFrom-Json
-    
+
     $currentsite = $null
     foreach ($machine in $VMs) {
         if (-not ($machine -match "(/subscriptions/.*\/VMwareSites/([^\/]*)\w{4}site)")) {
