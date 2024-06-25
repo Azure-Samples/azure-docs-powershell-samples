@@ -73,14 +73,35 @@ function Get-AzMigProject {
     return $result.Id
 }
 
-function Get-FilteredMachines {
+function Get-Machines {
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory = $true)][string]$SiteId,
-        [Parameter(Mandatory = $true)][string]$appliancename,
+        [Parameter(Mandatory = $true)][string]$ResourceGroupName,
+        [Parameter(Mandatory = $true)][string]$ProjectName,
         [Parameter()][Hashtable]$Filter,
-        [Parameter(Mandatory = $true)][string]$OutputCsvFile
+        [Parameter()][string]$ApplianceName = $null
     )
+
+    $ProjectId = Get-AzMigProject -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
+	
+    if(-not $ProjectId) {
+        throw "Project ID is invalid"
+    }
+
+    $query = "resources| where type == 'microsoft.offazure/vmwaresites' or type == 'microsoft.offazure/hypervsites' or type == 'microsoft.offazure/serversites'| where resourceGroup == '$ResourceGroupName' and properties.discoverySolutionId has '$ProjectName'| project properties.applianceName, id"
+    $response = $null
+    $response = Search-AzGraph -Query $query
+    if (-not $response) {
+        throw "Server Discovery Solution missing Appliance Details. Invalid Solution"
+    }
+
+    $appMap = @{}
+
+    foreach($row in $response){    
+    $applianceName = $row.properties_applianceName
+    $id = $row.id
+    $appMap[$applianceName] = $id
+    }
 
     $filterquery=""
     if($Filter){   
@@ -132,7 +153,29 @@ function Get-FilteredMachines {
             }
         }
     }
-    $query = "migrateresources
+    
+    $vmwareappliancemap = @{}
+
+    if (-not $ApplianceName) {
+        $appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}
+        }
+        else { 
+        $appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}
+        }
+    
+        Write-Debug -Message "Appliance count : $vmwareappliancemap.count"
+    
+        if($vmwareappliancemap) {$vmwareappliancemap | Out-String | Write-Debug};
+        if (-not $vmwareappliancemap.count) {
+            throw "No VMware VMs discovered in project"
+        }
+        Write-Host "Please wait while the list of discovered machines is downloaded..."
+    [System.Collections.Generic.List[string]]$kqlResult
+    foreach ($item in $vmwareappliancemap.GetEnumerator()) {
+        $SiteId = $item.Value
+        $appliancename = $item.Key
+        Write-Debug -Message "Get machines for Site $SiteId"
+        $query = "migrateresources
              | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')
              | extend ServerName = properties.displayName,
              DependencyStatus = iff(array_length(properties.dependencyMapDiscovery.errors) == 0, properties.dependencyMapping, 'ValidationFailed'),
@@ -145,19 +188,18 @@ function Get-FilteredMachines {
              ARMID = id
             | mv-expand properties.networkAdapters
             | extend IPAddressList = properties_networkAdapters.ipAddressList
-            | summarize IPAddresses = make_list(IPAddressList) by name,tostring(ServerName),tostring(DependencyStatus),tostring(Source),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(tags),tostring(ARMID),tostring(properties.dependencyMapDiscovery),tostring(properties.guestOSDetails)
+            | summarize IPAddresses = make_list(IPAddressList) by name, tostring(ServerName), tostring(DependencyStatus), tostring(Source), tostring(ErrorTimeStamp), tostring(DependencyStartTime), tostring(PowerStatus), tostring(Appliance), tostring(FriendlyNameOfCredentials), tostring(tags), tostring(ARMID), tostring(properties.dependencyMapDiscovery) ,tostring(properties.guestOSDetails)
             |join kind=leftouter (
              migrateresources
             | mv-expand properties.dependencyMapDiscovery.errors
             | extend ErrorDetails = strcat('ID:', properties_dependencyMapDiscovery_errors.id, ', Code:', properties_dependencyMapDiscovery_errors.code, ', Message:', properties_dependencyMapDiscovery_errors.message)
             | summarize Error = make_list(ErrorDetails) by name
             ) on name
-            |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)"+"$fil"+
+            |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error), OperatingSystem = todynamic(properties_guestOSDetails), Tags = todynamic(tags)" + "$fil" +
             "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
     Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
     $batchSize = 100
     $skipResult = 0
-    [System.Collections.Generic.List[string]]$kqlResult
         
     while($true) {
         
@@ -176,6 +218,11 @@ function Get-FilteredMachines {
 
         $skipResult += $skipResult + $batchSize
     }
+        else {
+            Write-Host "No results found."
+        }            
+    } 
+    
     return $kqlResult
 }
 
@@ -200,53 +247,12 @@ function Get-AzMigDiscoveredVMwareVMs {
 	if (-not ($OutputCsvFile -match ".*\.csv$")) {
         throw "Output file specified is not CSV."    
     }
-    
-    $ProjectId = Get-AzMigProject -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
-	
-    $Properties = GetRequestProperties
 
-    if(-not $ProjectId) {
-        throw "Project ID is invalid"
-    }
-
-    $query = "resources| where type == 'microsoft.offazure/vmwaresites' or type == 'microsoft.offazure/hypervsites' or type == 'microsoft.offazure/serversites'| where resourceGroup == '$ResourceGroupName' and properties.discoverySolutionId has '$ProjectName'| project properties.applianceName, id"
-    $response = $null
-    $response = Search-AzGraph -Query $query
-    if (-not $response) {
-        throw "Server Discovery Solution missing Appliance Details. Invalid Solution"
-    }
-
-    $appMap = @{}
-
-    foreach($row in $response){    
-    $applianceName = $row.properties_applianceName
-    $id = $row.id
-    $appMap[$applianceName] = $id
-    }
-
-    $vmwareappliancemap = @{}
-
-    if (-not $ApplianceName) {
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}
-    }
-    else { 
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}
-    }
-
-    Write-Debug -Message $vmwareappliancemap.count
-
-    if($vmwareappliancemap) {$vmwareappliancemap | Out-String | Write-Debug};
-    if (-not $vmwareappliancemap.count) {
-        throw "No VMware VMs discovered in project"
-    }
+  
     
 	Write-Host "Please wait while the list of discovered machines is downloaded..."
     
-    foreach ($item in $vmwareappliancemap.GetEnumerator()) {
-        $SiteId = $item.Value
-        $appliancename = $item.Key
-        Write-Debug -Message "Get machines for Site $SiteId"
-        $kqlResult = Get-FilteredMachines -SiteId '$SiteId' -appliancename '$appliancename' -Filter '$Filter' -OutputCsvFile '$OutputCsvFile'
+        $kqlResult = Get-FilteredMachines -ResourceGroupName '$ResourceGroupName' -ProjectName '$ProjectName' -Filter '$Filter' -ApplianceName '$ApplianceName'
         if ($kqlResult) {
             $appliancename = $item.Key
             Write-Host "Machines discovered for $appliancename"
@@ -255,8 +261,7 @@ function Get-AzMigDiscoveredVMwareVMs {
         } 
         else {
             Write-Host "No results found."
-        }            
-    }         
+        }                  
 } 
 
 
