@@ -246,7 +246,7 @@ function Get-AzMigDiscoveredVMwareVMs {
         $SiteId = $item.Value
         $appliancename = $item.Key
         Write-Debug -Message "Get machines for Site $SiteId"
-        $kqlResult = Get-Machines -SiteId '$SiteId' -appliancename '$appliancename' -Filter '$Filter' -OutputCsvFile '$OutputCsvFile'
+        $kqlResult = Get-Machines -SiteId '$SiteId' -appliancename '$appliancename' -Filter $Filter -OutputCsvFile '$OutputCsvFile'
         if ($kqlResult) {
             $appliancename = $item.Key
             Write-Host "Machines discovered for $appliancename"
