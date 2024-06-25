@@ -131,6 +131,7 @@ function Get-Machines {
             }
         }
     }
+    $filterquery
     $query = "migrateresources
              | where id has '$SiteId' and type in ('microsoft.offazure/serversites/machines', 'microsoft.offazure/hypervsites/machines', 'microsoft.offazure/vmwaresites/machines')
              | extend ServerName = properties.displayName,
@@ -166,7 +167,7 @@ function Get-Machines {
         else {
             $graphResult = Search-AzGraph -Query $query -First $batchSize
         }
-        
+        $graphResult
         $kqlResult += $graphResult.data
         
         if ($graphResult.data.Count -lt $batchSize) {
@@ -339,7 +340,7 @@ function Set-AzMigDependencyMappingAgentless {
         foreach ($Key in $machinesinfo.Keys) {
             $siteid = $Key
             $type = $machinesinfo[$siteid]["Type"]
-            $machinesalreadyenabled = Get-Machines -SiteId '$siteid' -Filter @{"DependencyStatus" = '$ActionVerb'}
+            $machinesalreadyenabled = Get-Machines -SiteId '$siteid' -Filter @{"DependencyStatus" = $ActionVerb}
             $machinesalreadyenabled
             $machinesalreadyenabledcount = $machinesalreadyenabled.count_
             Write-Host '1'
