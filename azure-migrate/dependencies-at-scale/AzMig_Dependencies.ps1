@@ -175,6 +175,8 @@ function Get-Machines {
 
         $skipResult += $skipResult + $batchSize
     }
+    Write-Host "10"
+    $kqlResult
     return $kqlResult
 }
 
@@ -338,6 +340,7 @@ function Set-AzMigDependencyMappingAgentless {
             $siteid = $Key
             $type = $machinesinfo[$siteid]["Type"]
             $machinesalreadyenabled = Get-Machines -SiteId '$siteid' -Filter @{"DependencyStatus" = '$ActionVerb'}
+            $machinesalreadyenabled
             $machinesalreadyenabledcount = $machinesalreadyenabled.count_
             Write-Host '1'
             $machinesalreadyenabledcount
