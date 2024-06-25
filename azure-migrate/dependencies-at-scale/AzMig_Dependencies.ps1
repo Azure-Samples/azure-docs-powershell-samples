@@ -154,11 +154,11 @@ function Get-Machines {
             ) on name
             |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error), OperatingSystem = todynamic(properties_guestOSDetails), Tags = todynamic(tags)" + "$filterquery" +
             "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
-
+    $query
     $batchSize = 100
     $skipResult = 0
     [System.Collections.Generic.List[string]]$kqlResult
-        
+    $graphResult = $null
     while($true) {
         
         if ($skipResult -gt 0) {
@@ -178,7 +178,7 @@ function Get-Machines {
     }
     Write-Host "10"
     $kqlResult
-    return $kqlResult
+    return $graphResult
 }
 
 function Get-AzMigDiscoveredVMwareVMs {
