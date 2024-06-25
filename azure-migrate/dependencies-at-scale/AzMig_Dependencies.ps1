@@ -304,7 +304,14 @@ function Set-AzMigDependencyMappingAgentless {
         $machinesinfo = @{}
         foreach ($machine in $VMDetails) {
             $machinetype = $null
-            $siteid = $machine.ARMID
+            $machineid = $machine.ARMID
+            $splitid = $machineid -split '/'
+            $vmwareSitesIndex = $splitid.IndexOf('VMwareSites')
+            if ($vmwareSitesIndex -ne -1 -and $vmwareSitesIndex -lt ($splitid.Count - 1)) {
+            $siteid = $splitid[$vmwareSitesIndex + 1]
+            } else {
+            throw "Site ID not found in the resource ID."
+            }
 
             if ($siteid -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
                 $machinetype = "vmware"
