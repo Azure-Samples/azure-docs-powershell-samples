@@ -339,7 +339,9 @@ function Set-AzMigDependencyMappingAgentless {
             $type = $machinesinfo[$siteid]["Type"]
             $machinesalreadyenabled = Get-Machines -SiteId '$siteid' -Filter @{"DependencyStatus" = '$ActionVerb'}
             $machinesalreadyenabledcount = $machinesalreadyenabled.count_
+            Write-Host '1'
             $machinesalreadyenabledcount
+            Write-Host '2'
                 if ($type -eq "vmware") {
                      $machinesinfo[$siteid]["numberofmachinesthatcanbeenabled"] = 3000 - $machinesalreadyenabledcount
                 } 
