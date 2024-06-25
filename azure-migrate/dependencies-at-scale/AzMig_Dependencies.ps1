@@ -359,7 +359,7 @@ function Set-AzMigDependencyMappingAgentless {
     }
     $Properties = GetRequestProperties
 
-    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARM  ID")
+    $VMs = $VMDetails.ARMID
 
 
     $VMs = $VMs | sort
