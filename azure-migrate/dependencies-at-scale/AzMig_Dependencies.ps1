@@ -152,7 +152,7 @@ function Get-Machines {
             | extend ErrorDetails = strcat('ID:', properties_dependencyMapDiscovery_errors.id, ', Code:', properties_dependencyMapDiscovery_errors.code, ', Message:', properties_dependencyMapDiscovery_errors.message)
             | summarize Error = make_list(ErrorDetails) by name
             ) on name
-            |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error), OperatingSystem = todynamic(properties_guestOSDetails), Tags = todynamic(tags)" + "$fil" +
+            |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error), OperatingSystem = todynamic(properties_guestOSDetails), Tags = todynamic(tags)" + "$filterquery" +
             "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
 
     $batchSize = 100
