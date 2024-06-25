@@ -336,7 +336,7 @@ function Set-AzMigDependencyMappingAgentless {
         
         foreach ($Key in $machinesinfo.Keys) {
             $siteid = $Key
-            $type = $machinesinfo[$vcentername]["Type"]
+            $type = $machinesinfo[$siteid]["Type"]
             $machinesalreadyenabled = Get-Machines -SiteId '$siteid' -Filter @{"DependencyStatus" = '$ActionVerb'}
             $machinesalreadyenabledcount = $machinesalreadyenabled.count_
                 if ($type -eq "vmware") {
@@ -359,7 +359,7 @@ function Set-AzMigDependencyMappingAgentless {
     }
     $Properties = GetRequestProperties
 
-    $VMs = $VMDetails.ARMID
+    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARMID")
 
 
     $VMs = $VMs | sort
