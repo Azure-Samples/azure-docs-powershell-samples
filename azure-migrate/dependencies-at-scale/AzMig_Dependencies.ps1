@@ -153,7 +153,7 @@ function Get-Machines {
             ) on name
             |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error), OperatingSystem = todynamic(properties_guestOSDetails), Tags = todynamic(tags)" + "$fil" +
             "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
-    Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
+
     $batchSize = 100
     $skipResult = 0
     [System.Collections.Generic.List[string]]$kqlResult
@@ -300,12 +300,60 @@ function Set-AzMigDependencyMappingAgentless {
     else {
         throw "Error"
     }
+    if ($ActionVerb -eq "Enabled") {
+        $machinesinfo = @{}
+        foreach ($machine in $VMDetails) {
+            $machinetype = $null
+            $siteid = $machine.ARMID
 
-    
+            if ($siteid -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
+                $machinetype = "vmware"
+            } 
+            elseif ($siteid -match "/subscriptions/.*/HyperVSites/([^/]*)\w{4}site") {
+                $machinetype = "hyperv"
+            } 
+            elseif ($siteid -match "/subscriptions/.*/ServerSites/([^/]*)\w{4}site") {
+                $machinetype = "server"
+            }
 
+            if (-not $machinesinfo.ContainsKey($siteid)) {
+                $machinesinfo[$siteid] = @{
+                     "Type" = $machinetype
+                     "Count" = 0
+                    "numberofmachinesthatcanbeenabled" = 0
+                }
+            }
+            $machinesinfo[$siteid]["Count"]++
+        }
+
+        
+        foreach ($Key in $machinesinfo.Keys) {
+            $siteid = $Key
+            $type = $machinesinfo[$vcentername]["Type"]
+            $machinesalreadyenabled = Get-Machines -SiteId '$siteid' -Filter @{"DependencyStatus" = '$ActionVerb'}
+            $machinesalreadyenabledcount = $machinesalreadyenabled.count_
+                if ($type -eq "vmware") {
+                     $machinesinfo[$siteid]["numberofmachinesthatcanbeenabled"] = 3000 - $machinesalreadyenabledcount
+                } 
+                elseif ($type -eq "hyperv") {
+                    $machinesinfo[$siteid]["numberofmachinesthatcanbeenabled"] = 1000 - $machinesalreadyenabledcount
+                } 
+                elseif ($type -eq "server") {
+                    $machinesinfo[$siteid]["numberofmachinesthatcanbeenabled"] = 1000 - $machinesalreadyenabledcount
+                }
+
+        }
+
+        foreach ($Key in $machinesinfo.Keys) {
+            if ($machinesinfo[$Key]["Count"] -gt $machinesinfo[$Key]["numberofmachinesthatcanbeenabled"]) {
+                throw "Maximum limit exceeded"
+            }
+        }
+    }
     $Properties = GetRequestProperties
 
-    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARM ID")
+    $VMs = ($VMDetails | Select-Object -ExpandProperty "ARMID")
+
 
     $VMs = $VMs | sort
 
