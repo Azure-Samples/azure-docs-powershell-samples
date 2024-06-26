@@ -238,18 +238,16 @@ function Get-AzMigDiscoveredVMwareVMs {
     $appMap = @{}
 
     foreach($row in $ApplianceDetails){    
-    $applianceName = $row.properties_applianceName
-    $id = $row.id
-    $appMap[$applianceName] = $id
+        $appMap[$row.properties_applianceName] = $row.id
     }
 
     $vmwareappliancemap = @{}
 
     if (-not $ApplianceName) {
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}
+	    $appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}
     }
     else { 
-	$appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}
+	    $appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites" -and $_.Key -eq $ApplianceName) {$vmwareappliancemap[$_.Key] = $_.Value}}
     }
 
     Write-Debug -Message "Appliance count : $vmwareappliancemap.count"
