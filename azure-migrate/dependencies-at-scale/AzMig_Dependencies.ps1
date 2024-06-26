@@ -393,11 +393,11 @@ function Set-AzMigDependencyMappingAgentless {
         }
 
         foreach ($Key in $machinesinfo.Keys) {
-            $machinesinfo[$Key]
-        $machinesinfo[$Key]['Type']
-        $machinesinfo[$Key]['Count']
-        $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
-            if ($machinesinfo[$Key]['Count'] -gt $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']) {
+            $machinesinfo[$siteid]
+        $machinesinfo[$siteid]['Type']
+        $machinesinfo[$siteid]['Count']
+        $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
+            if ($machinesinfo[$siteid]['Count'] -gt $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']) {
                 throw "Maximum limit exceeded"
             }
         }
