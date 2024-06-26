@@ -63,7 +63,7 @@ function Get-AzMigProject {
         [Parameter(Mandatory = $true)][string]$ResourceGroupName,
         [Parameter(Mandatory = $true)][string]$ProjectName
     )
-
+    #GetProjectId
     $query = "resources | where type == 'microsoft.migrate/migrateprojects' and resourceGroup == '$ResourceGroupName' and name == '$ProjectName'"
     $result = $null
     $result = Search-AzGraph -Query $query
@@ -79,7 +79,7 @@ function Get-AzMigAppliances {
         [Parameter(Mandatory = $true)][string]$ResourceGroupName,
         [Parameter(Mandatory = $true)][string]$ProjectName
     )
-
+    #GetApplianceDetails
     $query = "resources| where type == 'microsoft.offazure/vmwaresites' or type == 'microsoft.offazure/hypervsites' or type == 'microsoft.offazure/serversites'| where resourceGroup == '$ResourceGroupName' and properties.discoverySolutionId has '$ProjectName'| project properties.applianceName, id"
     $response = $null
     $response = Search-AzGraph -Query $query
@@ -97,11 +97,12 @@ function Get-AzMigMachines {
         [Parameter()][string]$appliancename = $null,
         [Parameter()][Hashtable]$Filter
     )
-
+    #ConvertingFiltertoKQLQuery
     $filterquery=""
     if($Filter){   
         foreach($Key in $Filter.Keys){
            $Val=$Filter[$Key]
+           #FilterforIPAddressorIPAddressrange
             if ($Key -ieq "IPAddresses") {
                 $iprange = "$Val"
                 function CheckIPAddress($address) {
@@ -131,17 +132,17 @@ function Get-AzMigMachines {
                     throw "The IP range is not valid"
                 }
             }
-
+            #FilterforOperatingSystemDetails
             elseif ($Key -ieq "osType" -or $Key -ieq "osName" -or $Key -ieq "osArchitecture" -or $Key -ieq "osVersion") {
                 $filterquery+="| where "
                 $filterquery += "OperatingSystem.$Key == '$Val'"
             }
-
+            #Filterforservername,dependencystatus,powerstatus
             elseif($Key -ieq "ServerName" -or $Key -ieq "Source" -or $Key -ieq "DependencyStatus" -or $Key -ieq "PowerStatus") {
                 $filterquery+="| where "
                 $filterquery += "$Key == '$Val'"
             }
-
+            #Filterfortags
             else{
                 $filterquery+="| where "
                 $filterquery += "Tags.$Key == '$Val'"
@@ -177,13 +178,17 @@ function Get-AzMigMachines {
 
     while ($true) {
 
-        if ($skipResult -gt 0) {
-            $graphResult = Search-AzGraph -Query $query -First $batchSize -SkipToken $graphResult.SkipToken
+        try {
+            if ($skipResult -gt 0) {
+                $graphResult = Search-AzGraph -Query $query -First $batchSize -SkipToken $graphResult.SkipToken
+            }
+            else {
+                $graphResult = Search-AzGraph -Query $query -First $batchSize
+            }
         }
-        else {
-            $graphResult = Search-AzGraph -Query $query -First $batchSize
+        catch {
+            throw "Invalid Query"
         }
-
         foreach ($entry in $graphResult.data) {
             $machine = [PSCustomObject]($entry | Select-Object ServerName, Source, DependencyStatus, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID)
             $kqlResult += $machine  
@@ -222,13 +227,14 @@ function Get-AzMigDiscoveredVMwareVMs {
 	if (-not ($OutputCsvFile -match ".*\.csv$")) {
         throw "Output file specified is not CSV."    
     }
-    
+    #FetchingtheProjectId
     $ProjectId = Get-AzMigProject -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
 
     if(-not $ProjectId) {
         throw "Project ID is invalid"
     }
-
+    
+    #GetApplianceDetails
     $ApplianceDetails = Get-AzMigAppliances -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
 
     if(-not $ApplianceDetails) {
@@ -242,7 +248,9 @@ function Get-AzMigDiscoveredVMwareVMs {
     }
 
     $vmwareappliancemap = @{}
-
+    #Discard non-VMware appliances
+    #If Appliance name is passed get data only for that appliance
+    #If Appliance name is not passed , get data for all appliances in that project
     if (-not $ApplianceName) {
 	    $appMap.GetEnumerator() | foreach {if($_.Value -match "VMwareSites|HyperVSites|ServerSites") {$vmwareappliancemap[$_.Key] = $_.Value}}
     }
@@ -328,7 +336,7 @@ function Set-AzMigDependencyMappingAgentless {
     else {
         throw "Error"
     }
-
+    #Checkifthenumberofmachinesexceedthemaximumlimit
     if ($ActionVerb -eq "Enabled") {
         $machinesinfo = @{}
         foreach ($machine in $VMDetails) {
@@ -350,6 +358,7 @@ function Set-AzMigDependencyMappingAgentless {
             else {
                 throw "Site ID not found in the arm ID."
             }
+            #storingthecountofmachinespresentincsv
             if (-not $machinesinfo.ContainsKey($siteid)) {
                 $machinesinfo[$siteid] = @{
                         'Type' = $null
@@ -375,15 +384,12 @@ function Set-AzMigDependencyMappingAgentless {
             $machinesalreadyenabledcount = $machinesalreadyenabled.Count
                 if ($type -eq 'vmware') {
                      $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 3000 - $machinesalreadyenabledcount
-                     $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
                 } 
                 elseif ($type -eq 'hyperv') {
                     $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
-                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
                 } 
                 elseif ($type -eq 'server') {
                     $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
-                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
                 }
 
         }
