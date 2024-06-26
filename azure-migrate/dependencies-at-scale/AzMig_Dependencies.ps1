@@ -1,3 +1,5 @@
+New-Variable -Name VMwaremaxlimit -Value 3000 -Option Constant
+New-Variable -Name Hypervandservermaxlimit -Value 1000 -Option Constant
 function GetRequestProperties() {
 
     $ErrorActionPreference = 'Stop'
@@ -342,19 +344,12 @@ function Set-AzMigDependencyMappingAgentless {
         foreach ($machine in $VMDetails) {
             $machineid = $machine.ARMID
             $splitid = $machineid -split '/'
-            $vmwareSitesIndex = $splitid.IndexOf('VMwareSites')
-            $hypervSitesIndex = $splitid.IndexOf('HyperVSites')
-            $serversitesIndex = $splitid.IndexOf('ServerSites')
+            $sitetypeindex = ($splitid.IndexOf('VMwareSites'), $splitid.IndexOf('HyperVSites'), $splitid.IndexOf('ServerSites') | Where-Object { $_ -ne -1 })[0]
 
-            if ($vmwareSitesIndex -ne -1 -and $vmwareSitesIndex -lt ($splitid.Count - 1)) {
-                $siteid = ($splitid[0..($vmwareSitesIndex + 1)] -join '/')
+            if ($sitetypeindex -ne -1 -and $sitetypeindex -lt ($splitid.Count - 1)) {
+                $siteid = ($splitid[0..($sitetypeindex + 1)] -join '/')
             } 
-            elseif ($hypervSitesIndex -ne -1 -and $hypervSitesIndex -lt ($splitid.Count - 1)) {
-                $siteid = ($splitid[0..($hypervSitesIndex + 1)] -join '/')
-            } 
-            elseif ($serversitesIndex -ne -1 -and $serversitesIndex -lt ($splitid.Count - 1)) {
-                $siteid = ($splitid[0..($serversitesIndex + 1)] -join '/')
-            } 
+
             else {
                 throw "Site ID not found in the arm ID."
             }
@@ -362,8 +357,7 @@ function Set-AzMigDependencyMappingAgentless {
             if (-not $machinesinfo.ContainsKey($siteid)) {
                 $machinesinfo[$siteid] = @{
                         'Type' = $null
-                        'Count' = 0
-                        'numberofmachinesthatcanbeenabled' = 0
+                        'Countofmachinestobeenabled' = 0
                 }
                 if ($siteid -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
                     $machinesinfo[$siteid]['Type'] = 'vmware'
@@ -375,7 +369,7 @@ function Set-AzMigDependencyMappingAgentless {
                     $machinesinfo[$siteid]['Type'] = 'server'
                 }
             }
-            $machinesinfo[$siteid]['Count']++
+            $machinesinfo[$siteid]['Countofmachinestobeenabled']++
         }
         
         foreach ($Key in $machinesinfo.Keys) {
@@ -383,21 +377,15 @@ function Set-AzMigDependencyMappingAgentless {
             [System.Collections.Generic.List[string]]$machinesalreadyenabled = Get-AzMigMachines -SiteId $Key -Filter @{"DependencyStatus" = "Enabled"}
             $machinesalreadyenabledcount = $machinesalreadyenabled.Count
                 if ($type -eq 'vmware') {
-                     $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 3000 - $machinesalreadyenabledcount
+                    if ($machinesinfo[$Key]['Countofmachinestobeenabled'] -gt ($VMwaremaxlimit - $machinesalreadyenabledcount)) {
+                        throw "Maximum limit exceeded for $type machines. Count of machines to be enabled: $($machinesinfo[$Key]['Countofmachinestobeenabled']). Count of machines that can be enabled: $($VMwaremaxlimit - $machinesalreadyenabledcount)"
+                    }
                 } 
-                elseif ($type -eq 'hyperv') {
-                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
-                } 
-                elseif ($type -eq 'server') {
-                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
+                elseif ($type -eq 'hyperv' -or $type -eq 'server') {
+                    if ($machinesinfo[$Key]['Countofmachinestobeenabled'] -gt ($Hypervandservermaxlimit - $machinesalreadyenabledcount)) {
+                         throw "Maximum limit exceeded for $type machines. Count of machines to be enabled: $($machinesinfo[$Key]['Countofmachinestobeenabled']). Count of machines that can be enabled: $($Hypervandservermaxlimit - $machinesalreadyenabledcount)"
+                    }
                 }
-
-        }
-
-        foreach ($Key in $machinesinfo.Keys) {
-            if ($machinesinfo[$Key]['Count'] -gt $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']) {
-                throw "Maximum limit exceeded"
-            }
         }
     }
     $Properties = GetRequestProperties
