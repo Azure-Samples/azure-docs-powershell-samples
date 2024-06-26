@@ -264,7 +264,7 @@ function Get-AzMigDiscoveredVMwareVMs {
         $SiteId = $item.Value
         $appliancename = $item.Key
         Write-Debug -Message "Get machines for Site $SiteId"
-        $kqlResult =  Get-Machines -SiteId $SiteId -appliancename $appliancename -Filter $Filter
+        $kqlResult =  Get-AzMigMachines -SiteId $SiteId -appliancename $appliancename -Filter $Filter
 
         if ($kqlResult) {
             $appliancename = $item.Key
@@ -364,7 +364,7 @@ function Set-AzMigDependencyMappingAgentless {
         
         foreach ($Key in $machinesinfo.Keys) {
             $type = $machinesinfo[$Key]['Type']
-            [System.Collections.Generic.List[string]]$machinesalreadyenabled = Get-Machines -SiteId $Key -Filter @{"DependencyStatus" = "Enabled"}
+            [System.Collections.Generic.List[string]]$machinesalreadyenabled = Get-AzMigMachines -SiteId $Key -Filter @{"DependencyStatus" = "Enabled"}
             $machinesalreadyenabledcount = $machinesalreadyenabled.Count
                 if ($type -eq 'vmware') {
                      $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled'] = 3000 - $machinesalreadyenabledcount
