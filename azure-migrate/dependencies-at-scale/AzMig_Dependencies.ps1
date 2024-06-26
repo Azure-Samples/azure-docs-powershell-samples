@@ -393,25 +393,24 @@ function Set-AzMigDependencyMappingAgentless {
     {
         "machines": []
     }
-    "@
+"@
     $jsonPayload = $jsonPayload | ConvertFrom-Json
-
-    $currentsite = $null
     
+    $currentsite = $null
     foreach ($machine in $VMs) {
         if (-not ($machine -match "(/subscriptions/.*\/VMwareSites/([^\/]*)\w{4}site)")) {
-            continue  
+            continue
         }
 
-        $sitename = $Matches[1]
+        $sitename = $Matches[1];
         Write-Debug "Site: $sitename Machine: $machine"
 
         if((-not $currentsite) -or ($sitename -eq $currentsite)) {
             $currentsite = $sitename
             $tempobj= [PSCustomObject]@{
-                        machineArmId = $machine
-                        dependencyMapping = $ActionVerb 
-                    }
+                                        machineArmId = $machine
+                                        dependencyMapping = $ActionVerb 
+                                       }
             $jsonPayload.machines += $tempobj
             continue
         }
@@ -421,8 +420,8 @@ function Set-AzMigDependencyMappingAgentless {
             if ($jsonPayload.machines.count) {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
-                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
-                Write-Debug -Message $requesturi
+                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $SDS_APIVERSION;
+                Write-Debug $requesturi
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
                 if ($response) {
@@ -438,21 +437,20 @@ function Set-AzMigDependencyMappingAgentless {
             #Reset jsonpayload
             $jsonPayload.machines = @()
             $tempobj= [PSCustomObject]@{
-                        machineArmId = $machine
-                        dependencyMapping = $ActionVerb 
-                       }
+                                        machineArmId = $machine
+                                        dependencyMapping = $ActionVerb 
+                                       }
             $jsonPayload.machines += $tempobj
             $currentsite = $sitename #update current site name
         }
     }
 
-
     #Enable/Disable dependency for unprocessed sites
     if ($jsonPayload.machines.count) {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
-       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + "?api-version=2020-01-01";
-       Write-Debug -Message $requesturi
+       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateProperties" + $SDS_APIVERSION;
+       Write-Debug $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
 	   $temp = $currentsite -match "\/([^\/]*)\w{4}site$" # Extract the appliance name
@@ -471,7 +469,7 @@ function Set-AzMigDependencyMappingAgentless {
     $currentsite = $null
     foreach ($machine in $VMs) {
         if (-not ($machine -match "(/subscriptions/.*\/HyperVSites/([^\/]*)\w{4}site)" -or $machine -match "(/subscriptions/.*\/ServerSites/([^\/]*)\w{4}site)" )) {
-            continue
+            continue    
         }
 
         $sitename = $Matches[1]
@@ -480,11 +478,11 @@ function Set-AzMigDependencyMappingAgentless {
         if((-not $currentsite) -or ($sitename -eq $currentsite)) {
             $currentsite = $sitename
             $tempobj= [PSCustomObject]@{
-                        machineId = $machine
-                        isDependencyMapToBeEnabled = $EnableDependencyMapping 
-                        }
+                                        machineId = $machine
+                                        isDependencyMapToBeEnabled = $EnableDependencyMapping 
+                                       }
             $jsonPayload.machines += $tempobj
-            continue
+            continue;
         }
 
         #different site. Send update request for previous site and start building request for the new site
@@ -492,8 +490,8 @@ function Set-AzMigDependencyMappingAgentless {
             if ($jsonPayload.machines.count) {
                 $requestbody = $jsonPayload | ConvertTo-Json
                 $requestbody | Write-Debug
-                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
-                Write-Debug -Message "request uri is : $requesturi"
+                $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $HyperVandServer_APIVERSION;
+                Write-Debug "request uri is : $requesturi"
                 $response = $null
                 $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
                 if ($response) {
@@ -509,9 +507,9 @@ function Set-AzMigDependencyMappingAgentless {
             #Reset jsonpayload
             $jsonPayload.machines = @()
             $tempobj= [PSCustomObject]@{
-                        machineId = $machine
-                        isDependencyMapToBeEnabled = $EnableDependencyMapping 
-                    }
+                                        machineId = $machine
+                                        isDependencyMapToBeEnabled = $EnableDependencyMapping 
+                                       }
             $jsonPayload.machines += $tempobj
             $currentsite = $sitename #update current site name
         }
@@ -522,17 +520,17 @@ function Set-AzMigDependencyMappingAgentless {
     if ($jsonPayload.machines.count) {
        $requestbody = $jsonPayload | ConvertTo-Json
        $requestbody | Write-Debug
-       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + "?api-version=2020-08-01-preview";
-       Write-Debug -Message $requesturi
+       $requesturi = $Properties['baseurl'] + ${currentsite} + "/UpdateDependencyMapStatus" + $HyperVandServer_APIVERSION;
+       Write-Debug $requesturi
        $response = $null
        $response = Invoke-RestMethod -Method Post -Headers $Properties['Headers'] -Body $requestbody  $requesturi -ContentType "application/json"
 	   $temp = $currentsite -match "\/([^\/]*)\w{4}site$" # Extract the appliance name
 	   $appliancename = $Matches[1]
        if ($response) {
-			Write-Output "Updating dependency mapping status for input VMs on appliance: $appliancename"
+					Write-Output "Updating dependency mapping status for input VMs on appliance: $appliancename"
        }
 	   else {
-			throw "Could not update dependency mapping status for input VMs on appliance: $appliancename"
+					throw "Could not update dependency mapping status for input VMs on appliance: $appliancename"
 		}
 	}
 
@@ -544,8 +542,6 @@ function Set-AzMigDependencyMappingAgentless {
 	}
 	
 }
-
-
 
 function Get-AzMigDependenciesAgentless {
     [CmdletBinding()]
@@ -579,7 +575,7 @@ function Get-AzMigDependenciesAgentless {
 	$siteresponse = Invoke-RestMethod -Uri $listsitesurl -Headers $Properties['Headers'] -ContentType "application/json" -Method "GET" # -Debug -Verbose
 	
 	if (-not $siteresponse) {
-		throw "Could not retrieve the site for appliance $appliancename"
+			throw "Could not retrieve the site for appliance $appliancename"
     }
 	
 	$VMwareSiteID = ""
@@ -588,7 +584,7 @@ function Get-AzMigDependenciesAgentless {
         $appMapV2 = $siteresponse.properties.details.extendedDetails.applianceNameToSiteIdMapV2 | ConvertFrom-Json
         # Fetch all appliance from V2 map first. Then these can be updated if found again in V3 map.
         foreach ($site in $appMapV2) {
-            $appliancename = $site.ApplianceName;
+            $appliancename = $site.ApplianceName
             if ($Appliance -ne $appliancename) {continue}
             $VMwareSiteID =  $site.SiteId
         }
@@ -598,31 +594,29 @@ function Get-AzMigDependenciesAgentless {
         $appMapV3 = $siteresponse.properties.details.extendedDetails.applianceNameToSiteIdMapV3 | ConvertFrom-Json
         foreach ($site in $appMapV3) {
             $siteProps = $site.psobject.properties
-            $appliancename = $siteProps.Value.ApplianceName;
+            $appliancename = $siteProps.Value.ApplianceName
             if ($Appliance -ne $appliancename) {continue}
             $VMwareSiteID =  $siteProps.Value.SiteId
         }
     }
 
     if ($null -eq $siteresponse.properties.details.extendedDetails.applianceNameToSiteIdMapV2 -And
-        $null -eq $siteresponse.properties.details.extendedDetails.applianceNameToSiteIdMapV3 ) {
+         $null -eq $siteresponse.properties.details.extendedDetails.applianceNameToSiteIdMapV3 ) {
         throw "Server Discovery Solution missing Appliance Details. Invalid Solution."           
     }
 			
 	if($VMwareSiteID -eq "") {
 		Write-Host "Appliance name is not valid."
-		return;
+		return
 	}
 	
 	Write-Output $VMWareSiteID
 
-	if($VMWareSiteID -match "(/subscriptions/.*\/VmwareSites/([^\/]*)\w{4}site)") {
-	    $url = $Properties['baseurl'] + $VMWareSiteID + "/exportDependencies?api-version=2020-01-01-preview"
-    }
+	if($VMWareSiteID -match "(/subscriptions/.*\/VmwareSites/([^\/]*)\w{4}site)"){
+	$url = $Properties['baseurl'] + $VMWareSiteID + "/exportDependencies?api-version=2020-01-01-preview" }
 
-	if($VMWareSiteID -match "(/subscriptions/.*\/HyperVSites/([^\/]*)\w{4}site)" -or $VMWareSiteID -match "(/subscriptions/.*\/ServerSites/([^\/]*)\w{4}site)") {
-	    $url = $Properties['baseurl'] + $VMWareSiteID + "/exportDependencies?api-version=2020-08-01-preview"
-    }
+	if($VMWareSiteID -match "(/subscriptions/.*\/HyperVSites/([^\/]*)\w{4}site)" -or $VMWareSiteID -match "(/subscriptions/.*\/ServerSites/([^\/]*)\w{4}site)"){
+	$url = $Properties['baseurl'] + $VMWareSiteID + "/exportDependencies?api-version=2020-08-01-preview" }
 	
 	$StartTime = Get-Date
 	
@@ -632,32 +626,31 @@ function Get-AzMigDependenciesAgentless {
 	
 	$EndTime = $EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss")
 
-    $jsonPayload = @"
-    {
-    "startTime": "$StartTime", 
-    "endTime": "$EndTime"
-    }
+$jsonPayload = @"
+{
+   "startTime": "$StartTime", 
+   "endTime": "$EndTime"
+   }
 "@
 	# Make the export dependencies call to get the SAS URI from which to download the dependencies
 	# Write-Host $url
     $response = Invoke-RestMethod -Uri $url -Headers $Properties['Headers'] -ContentType "application/json" -Method "POST" -Body $jsonPayload # -Debug -Verbose
     
 	if (-not $response) {
-		throw "Could not retrieve the site for appliance $appliancename"
+			throw "Could not retrieve the site for appliance $appliancename"
     }
 
-	if($VMWareSiteID -match "(/subscriptions/.*\/VmwareSites/([^\/]*)\w{4}site)") {	
-	    $url = $Properties['baseurl'] + $response.id + "?api-version=2020-01-01-preview"
-    }
+	if($VMWareSiteID -match "(/subscriptions/.*\/VmwareSites/([^\/]*)\w{4}site)"){	
+	$url = $Properties['baseurl'] + $response.id + "?api-version=2020-01-01-preview"}
 
-	if($VMWareSiteID -match "(/subscriptions/.*\/HyperVSites/([^\/]*)\w{4}site)" -or $VMWareSiteID -match "(/subscriptions/.*\/ServerSites/([^\/]*)\w{4}site)") {
-	    $url = $Properties['baseurl'] + $response.id + "?api-version=2020-08-01-preview"
-    }
+	if($VMWareSiteID -match "(/subscriptions/.*\/HyperVSites/([^\/]*)\w{4}site)" -or $VMWareSiteID -match "(/subscriptions/.*\/ServerSites/([^\/]*)\w{4}site)"){
+	$url = $Properties['baseurl'] + $response.id + "?api-version=2020-08-01-preview"}
 	
 	Write-Host "Please wait while the dependency data is downloaded..."
 	
 	# Poll until SAS URI is available
-	Do {
+	Do
+	{
 		try {
 			$uriresponse = Invoke-RestMethod -Uri $url -Headers $Properties['Headers'] -ContentType "application/json" -Method "GET" # -Debug -Verbose
 		}
@@ -686,4 +679,3 @@ function Get-AzMigDependenciesAgentless {
 	
 	Remove-Item $temp_filename
 }
-
