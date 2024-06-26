@@ -335,8 +335,17 @@ function Set-AzMigDependencyMappingAgentless {
             $machineid = $machine.ARMID
             $splitid = $machineid -split '/'
             $vmwareSitesIndex = $splitid.IndexOf('VMwareSites')
+            $hypervSitesIndex = $splitid.IndexOf('HyperVSites')
+            $serversitesIndex = $splitid.IndexOf('ServerSites')
+
             if ($vmwareSitesIndex -ne -1 -and $vmwareSitesIndex -lt ($splitid.Count - 1)) {
                 $siteid = ($splitid[0..($vmwareSitesIndex + 1)] -join '/')
+            } 
+            elseif ($hypervSitesIndex -ne -1 -and $hypervSitesIndex -lt ($splitid.Count - 1)) {
+                $siteid = ($splitid[0..($hypervSitesIndex + 1)] -join '/')
+            } 
+            elseif ($serversitesIndex -ne -1 -and $serversitesIndex -lt ($splitid.Count - 1)) {
+                $siteid = ($splitid[0..($serversitesIndex + 1)] -join '/')
             } 
             else {
                 throw "Site ID not found in the arm ID."
