@@ -375,13 +375,19 @@ function Set-AzMigDependencyMappingAgentless {
             $machinesalreadyenabledcount = $machinesalreadyenabled.Count
             $machinesalreadyenabledcount
                 if ($type -eq 'vmware') {
+                    Write-Host '1'
                      $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled'] = 3000 - $machinesalreadyenabledcount
+                     $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
                 } 
                 elseif ($type -eq 'hyperv') {
+                    Write-Host '2'
                     $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
+                    $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
                 } 
                 elseif ($type -eq 'server') {
+                    Write-Host '3'
                     $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
+                    $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
                 }
 
         }
