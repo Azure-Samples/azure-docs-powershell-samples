@@ -237,7 +237,7 @@ function Get-AzMigDiscoveredVMwareVMs {
 
     $appMap = @{}
 
-    foreach($row in $response){    
+    foreach($row in $ApplianceDetails){    
     $applianceName = $row.properties_applianceName
     $id = $row.id
     $appMap[$applianceName] = $id
