@@ -1,3 +1,6 @@
+New-Variable -Name vmWareMaxLimit -Value 3000 -Option Constant
+New-Variable -Name hypervAndServerMaxLimit -Value 1000 -Option Constant
+
 function GetRequestProperties() {
 
     $ErrorActionPreference = 'Stop'
@@ -63,7 +66,7 @@ function Get-AzMigProject {
         [Parameter(Mandatory = $true)][string]$ResourceGroupName,
         [Parameter(Mandatory = $true)][string]$ProjectName
     )
-    #GetProjectId
+    #Get Project Id
     $query = "resources | where type == 'microsoft.migrate/migrateprojects' and resourceGroup == '$ResourceGroupName' and name == '$ProjectName'"
     $result = $null
     $result = Search-AzGraph -Query $query
@@ -79,7 +82,7 @@ function Get-AzMigAppliances {
         [Parameter(Mandatory = $true)][string]$ResourceGroupName,
         [Parameter(Mandatory = $true)][string]$ProjectName
     )
-    #GetApplianceDetails
+    #Get Appliance Details
     $query = "resources| where type == 'microsoft.offazure/vmwaresites' or type == 'microsoft.offazure/hypervsites' or type == 'microsoft.offazure/serversites'| where resourceGroup == '$ResourceGroupName' and properties.discoverySolutionId has '$ProjectName'| project properties.applianceName, id"
     $response = $null
     $response = Search-AzGraph -Query $query
@@ -87,24 +90,25 @@ function Get-AzMigAppliances {
         throw "Appliances not found"
     }
     return $response
-
 }
 
-function Get-AzMigMachines {
+function Get-AzMigDiscoveredMachines {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true)][string]$SiteId,
         [Parameter()][string]$appliancename = $null,
         [Parameter()][Hashtable]$Filter
     )
-    #ConvertingFiltertoKQLQuery
-    $filterquery=""
+
+    #Converting Filter to KQL Query
+    $filterQuery=""
     if($Filter){   
-        foreach($Key in $Filter.Keys){
-           $Val=$Filter[$Key]
-           #FilterforIPAddressorIPAddressrange
-            if ($Key -ieq "IPAddresses") {
-                $iprange = "$Val"
+        foreach($key in $Filter.Keys){
+           $val=$Filter[$key]
+
+           #Filter for IPAddress or IPAddressrange
+            if ($key -ieq "IPAddresses") {
+                $ipRange = "$val"
                 function CheckIPAddress($address) {
                     try {
                         $ip = [System.Net.IPAddress]::Parse($address.Split('/')[0])
@@ -123,29 +127,29 @@ function Get-AzMigMachines {
                     }
                 }
          
-                $ipType = CheckIPAddress($iprange)
+                $ipType = CheckIPAddress($ipRange)
              
                 if ($ipType -ieq "IPv4" -or $ipType -ieq "IPv6") {
-                    $filterquery += "| mv-expand IPAddress=IPAddresses | extend Iprange = '$iprange' | extend result = " + $ipType.ToLower() + "_compare(tostring(IPAddress),tostring(Iprange)) | where result == '0' | project-away result,Iprange | summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID) | project-away list_IPAddress"
+                    $filterQuery += "| mv-expand IPAddress=IPAddresses | extend Iprange = '$ipRange' | extend result = " + $ipType.ToLower() + "_compare(tostring(IPAddress),tostring(Iprange)) | where result == '0' | project-away result,Iprange | summarize make_list(IPAddress) by tostring(ServerName),tostring(IPAddresses),tostring(Source),tostring(DependencyStatus),tostring(DependencyErrors),tostring(ErrorTimeStamp),tostring(DependencyStartTime),tostring(OperatingSystem),tostring(PowerStatus),tostring(Appliance),tostring(FriendlyNameOfCredentials),tostring(Tags),tostring(ARMID) | project-away list_IPAddress"
                 } 
                 else {
                     throw "The IP range is not valid"
                 }
             }
-            #FilterforOperatingSystemDetails
-            elseif ($Key -ieq "osType" -or $Key -ieq "osName" -or $Key -ieq "osArchitecture" -or $Key -ieq "osVersion") {
-                $filterquery+="| where "
-                $filterquery += "OperatingSystem.$Key == '$Val'"
+            #Filter for Operating System Details
+            elseif ($key -ieq "osType" -or $key -ieq "osName" -or $key -ieq "osArchitecture" -or $key -ieq "osVersion") {
+                $filterQuery += "| where "
+                $filterQuery += "OperatingSystem.$key == '$val'"
             }
-            #Filterforservername,dependencystatus,powerstatus
-            elseif($Key -ieq "ServerName" -or $Key -ieq "Source" -or $Key -ieq "DependencyStatus" -or $Key -ieq "PowerStatus") {
-                $filterquery+="| where "
-                $filterquery += "$Key == '$Val'"
+            #Filter for servername, dependencystatus, powerstatus
+            elseif($key -ieq "ServerName" -or $key -ieq "Source" -or $key -ieq "DependencyStatus" -or $key -ieq "PowerStatus") {
+                $filterQuery += "| where "
+                $filterQuery += "$key == '$val'"
             }
-            #Filterfortags
+            #Filter for tags
             else{
-                $filterquery+="| where "
-                $filterquery += "Tags.$Key == '$Val'"
+                $filterQuery += "| where "
+                $filterQuery += "Tags.$key == '$val'"
             }
         }
     }
@@ -171,13 +175,13 @@ function Get-AzMigMachines {
                ) on name
                |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)" + "$filterquery" +
                "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
+
     Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
     $batchSize = 100
     $skipResult = 0
     $kqlResult = @()
 
     while ($true) {
-
         try {
             if ($skipResult -gt 0) {
                 $graphResult = Search-AzGraph -Query $query -First $batchSize -SkipToken $graphResult.SkipToken
@@ -187,8 +191,9 @@ function Get-AzMigMachines {
             }
         }
         catch {
-            throw "Invalid Query"
+            throw "Filter passed is invalid"
         }
+
         foreach ($entry in $graphResult.data) {
             $machine = [PSCustomObject]($entry | Select-Object ServerName, Source, DependencyStatus, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID)
             $kqlResult += $machine  
@@ -199,11 +204,8 @@ function Get-AzMigMachines {
         }
 
         $skipResult += $skipResult + $batchSize
-
     }
-
     return $kqlResult
-     
 }
 
 function Get-AzMigDiscoveredVMwareVMs {
@@ -227,23 +229,24 @@ function Get-AzMigDiscoveredVMwareVMs {
 	if (-not ($OutputCsvFile -match ".*\.csv$")) {
         throw "Output file specified is not CSV."    
     }
-    #FetchingtheProjectId
-    $ProjectId = Get-AzMigProject -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
 
-    if(-not $ProjectId) {
+    #Fetching the Project Id
+    $projectId = Get-AzMigProject -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
+
+    if(-not $projectId) {
         throw "Project ID is invalid"
     }
     
-    #GetApplianceDetails
-    $ApplianceDetails = Get-AzMigAppliances -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
+    #Get Appliance Details
+    $applianceDetails = Get-AzMigAppliances -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
 
-    if(-not $ApplianceDetails) {
+    if(-not $applianceDetails) {
         throw "Server Discovery Solution missing Appliance Details. Invalid Solution"
     }
 
     $appMap = @{}
 
-    foreach($row in $ApplianceDetails){    
+    foreach($row in $applianceDetails){    
         $appMap[$row.properties_applianceName] = $row.id
     }
 
@@ -270,7 +273,7 @@ function Get-AzMigDiscoveredVMwareVMs {
         $SiteId = $item.Value
         $appliancename = $item.Key
         Write-Debug -Message "Get machines for Site $SiteId"
-        $kqlResult =  Get-AzMigMachines -SiteId $SiteId -appliancename $appliancename -Filter $Filter
+        $kqlResult =  Get-AzMigDiscoveredMachines -SiteId $SiteId -appliancename $appliancename -Filter $Filter
 
         if ($kqlResult) {
             $appliancename = $item.Key
@@ -292,10 +295,6 @@ function Get-AzMigDiscoveredVMwareVMs {
         }            
     }         
 } 
-
-
-
-
 
 function Set-AzMigDependencyMappingAgentless {
     [CmdletBinding()]
@@ -334,85 +333,69 @@ function Set-AzMigDependencyMappingAgentless {
 		$EnableDependencyMapping = $false
     } 
     else {
-        throw "Error"
+        throw "Error: Action to update dependency mapping is invalid. Please specify either Enable or Disable."
     }
-    #Checkifthenumberofmachinesexceedthemaximumlimit
-    if ($ActionVerb -eq "Enabled") {
-        $machinesinfo = @{}
-        foreach ($machine in $VMDetails) {
-            $machineid = $machine.ARMID
-            $splitid = $machineid -split '/'
-            $vmwareSitesIndex = $splitid.IndexOf('VMwareSites')
-            $hypervSitesIndex = $splitid.IndexOf('HyperVSites')
-            $serversitesIndex = $splitid.IndexOf('ServerSites')
 
-            if ($vmwareSitesIndex -ne -1 -and $vmwareSitesIndex -lt ($splitid.Count - 1)) {
-                $siteid = ($splitid[0..($vmwareSitesIndex + 1)] -join '/')
-            } 
-            elseif ($hypervSitesIndex -ne -1 -and $hypervSitesIndex -lt ($splitid.Count - 1)) {
-                $siteid = ($splitid[0..($hypervSitesIndex + 1)] -join '/')
-            } 
-            elseif ($serversitesIndex -ne -1 -and $serversitesIndex -lt ($splitid.Count - 1)) {
-                $siteid = ($splitid[0..($serversitesIndex + 1)] -join '/')
+    #Check if the number of machines exceed the maximum limit
+    if ($ActionVerb -eq "Enabled") {
+        $machinesInfo = @{}
+        foreach ($machine in $VMDetails) {
+            $machineId = $machine.ARMID
+            $splitId = $machineId -split '/'
+            $siteTypeIndex = ($splitId.IndexOf('VMwareSites'), $splitId.IndexOf('HyperVSites'), $splitId.IndexOf('ServerSites') | Where-Object { $_ -ne -1 })[0]
+
+            if ($siteTypeIndex -ne -1 -and $siteTypeIndex -lt ($splitId.Count - 1)) {
+                $siteId = ($splitId[0..($siteTypeIndex + 1)] -join '/')
             } 
             else {
                 throw "Site ID not found in the arm ID."
             }
-            #storingthecountofmachinespresentincsv
-            if (-not $machinesinfo.ContainsKey($siteid)) {
-                $machinesinfo[$siteid] = @{
-                        'Type' = $null
-                        'Count' = 0
-                        'numberofmachinesthatcanbeenabled' = 0
+
+            #storing the count of machines present in csv
+            if (-not $machinesInfo.ContainsKey($siteId)) {
+                $machinesInfo[$siteId] = @{
+                        'type' = $null
+                        'countOfMachinesToBeEnabled' = 0
                 }
-                if ($siteid -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
-                    $machinesinfo[$siteid]['Type'] = 'vmware'
+                if ($siteId -match "/subscriptions/.*/VMwareSites/([^/]*)\w{4}site") {
+                    $machinesInfo[$siteId]['type'] = 'vmware'
                 } 
-                elseif ($siteid -match "/subscriptions/.*/HyperVSites/([^/]*)\w{4}site") {
-                    $machinesinfo[$siteid]['Type']= 'hyperv'
+                elseif ($siteId -match "/subscriptions/.*/HyperVSites/([^/]*)\w{4}site") {
+                    $machinesInfo[$siteId]['type']= 'hyperv'
                 } 
-                elseif ($siteid -match "/subscriptions/.*/ServerSites/([^/]*)\w{4}site") {
-                    $machinesinfo[$siteid]['Type'] = 'server'
+                elseif ($siteId -match "/subscriptions/.*/ServerSites/([^/]*)\w{4}site") {
+                    $machinesInfo[$siteId]['type'] = 'server'
                 }
             }
-            $machinesinfo[$siteid]['Count']++
+            $machinesInfo[$siteId]['countOfMachinesToBeEnabled']++
         }
         
-        foreach ($Key in $machinesinfo.Keys) {
-            $type = $machinesinfo[$Key]['Type']
-            [System.Collections.Generic.List[string]]$machinesalreadyenabled = Get-AzMigMachines -SiteId $Key -Filter @{"DependencyStatus" = "Enabled"}
-            $machinesalreadyenabledcount = $machinesalreadyenabled.Count
-                if ($type -eq 'vmware') {
-                     $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 3000 - $machinesalreadyenabledcount
-                } 
-                elseif ($type -eq 'hyperv') {
-                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
-                } 
-                elseif ($type -eq 'server') {
-                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
-                }
+        foreach ($key in $machinesInfo.Keys) {
+            $type = $machinesinfo[$key]['type']
+            [System.Collections.Generic.List[string]]$machinesAlreadyEnabled = Get-AzMigDiscoveredMachines -SiteId $Key -Filter @{"DependencyStatus" = "Enabled"}
+            $machinesAlreadyEnabledCount = $machinesAlreadyEnabled.Count
+            $maxLimit
+            if ($type -eq 'vmware') {
+                $maxLimit = $vmWareMaxLimit
+            } 
+            else {
+                $maxLimit = $hypervAndServerMaxLimit
+            }
 
-        }
-
-        foreach ($Key in $machinesinfo.Keys) {
-            if ($machinesinfo[$Key]['Count'] -gt $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']) {
-                throw "Maximum limit exceeded"
+            if ($machinesInfo[$key]['countOfMachinesToBeEnabled'] -gt ($maxLimit - $machinesAlreadyEnabledCount)) {
+                throw "Maximum limit exceeded for $type machines. Count of machines to be enabled: $($machinesInfo[$key]['countOfMachinesToBeEnabled']). Count of machines that can be enabled: $($maxLimit - $machinesAlreadyEnabledCount)"
             }
         }
     }
     $Properties = GetRequestProperties
-
     $VMs = ($VMDetails | Select-Object -ExpandProperty "ARMID")
-
     $VMs = $VMs | sort
-
     $jsonPayload = @"
     {
         "machines": []
     }
 "@
     $jsonPayload = $jsonPayload | ConvertFrom-Json
-    
     $currentsite = $null
     foreach ($machine in $VMs) {
         if (-not ($machine -match "(/subscriptions/.*\/VMwareSites/([^\/]*)\w{4}site)")) {
