@@ -376,28 +376,28 @@ function Set-AzMigDependencyMappingAgentless {
             $machinesalreadyenabledcount
                 if ($type -eq 'vmware') {
                     Write-Host '1'
-                     $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled'] = 3000 - $machinesalreadyenabledcount
-                     $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
+                     $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 3000 - $machinesalreadyenabledcount
+                     $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
                 } 
                 elseif ($type -eq 'hyperv') {
                     Write-Host '2'
-                    $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
-                    $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
+                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
+                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
                 } 
                 elseif ($type -eq 'server') {
                     Write-Host '3'
-                    $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
-                    $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
+                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled'] = 1000 - $machinesalreadyenabledcount
+                    $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
                 }
 
         }
 
         foreach ($Key in $machinesinfo.Keys) {
-            $machinesinfo[$siteid]
-        $machinesinfo[$siteid]['Type']
-        $machinesinfo[$siteid]['Count']
-        $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']
-            if ($machinesinfo[$siteid]['Count'] -gt $machinesinfo[$siteid]['numberofmachinesthatcanbeenabled']) {
+            $machinesinfo[$Key]
+        $machinesinfo[$Key]['Type']
+        $machinesinfo[$Key]['Count']
+        $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']
+            if ($machinesinfo[$Key]['Count'] -gt $machinesinfo[$Key]['numberofmachinesthatcanbeenabled']) {
                 throw "Maximum limit exceeded"
             }
         }
