@@ -347,6 +347,7 @@ function Set-AzMigDependencyMappingAgentless {
             if ($siteTypeIndex -ne -1 -and $siteTypeIndex -lt ($splitId.Count - 1)) {
                 $siteId = ($splitId[0..($siteTypeIndex + 1)] -join '/')
             } 
+
             else {
                 throw "Site ID not found in the arm ID."
             }
