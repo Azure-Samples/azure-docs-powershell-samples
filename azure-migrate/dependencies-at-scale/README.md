@@ -9,7 +9,7 @@ With this PowerShell module you can:
 - Visualize network connections using downloaded dependency data. The downloaded dependency data can be imported into a PowerBI to visualize a map of network connections. The data can be downloaded for one appliance at a time. You can filter the map by servers and processes
 
 ## Current Limitations:
-- Agentless dependency analysis can be enabled on 1000 VMs concurrently.
+- Each appliance supports enabling Agentless dependency analysis on up to 3000 for VMware type and 1000 for other types.
 
 ## Pre-requisites
 Before you get started, you need to do the following:
@@ -21,6 +21,7 @@ Before you get started, you need to do the following:
 - Ensure you have PowerShell available. It is recommended you use the [latest version of PowerShell](https://docs.microsoft.com/powershell/scripting/install/installing-powershell).
 - Ensure you have the [Azure PowerShell](https://docs.microsoft.com/powershell/azure/install-az-ps) module installed.
 - The Az.Accounts module is required and must be at least version 2.2.0 or higher.
+- The Az.ResourceGraph module is required and PowerShellGet version 2.0.1 or higher is required.
 
 ## Log in to Azure
 
@@ -42,7 +43,13 @@ Connect-AzAccount -EnvironmentName AzureUSGovernment
 Select-AZSubscription -subscription "Fabrikam Demo Subscription"
 ```
 
-3. Import the downloaded AzMig_Dependencies powershell module
+3. Install the Resource Graph module.
+
+```PowerShell
+Install-Module -Name Az.ResourceGraph -Repository PSGallery -Scope AllUsers
+```
+
+4. Import the downloaded AzMig_Dependencies powershell module
 
 ```PowerShell
 Import-Module .\AzMig_Dependencies.psm1
@@ -52,13 +59,36 @@ Import-Module .\AzMig_Dependencies.psm1
 1. Get the list of discovered VMware VMs in your Azure Migrate project using the following commands. In the example below, the project name is FabrikamDemoProject, and the resource group it belongs to is FabrikamDemoRG. The list of machines will be saved in FabrikamDemo_VMs.csv
 
 ```PowerShell
-Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "FabrikamDemoProject" -OutputCsvFile "FabrikamDemo_VMs.csv"
+Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "FabrikamDemoProject" -OutputCsvFile "FabrikamDemo_VMs.csv" 
 ```
 > Please note the project name in the above query is the same one that is displayed in the Azure Portal. 
 
-In the file, you can see the VM display name, current status of dependency collection and the ARM ID of all discovered VMs. 
+To filter machines based on specific properties, you can use the following command:
 
-2. To enable or disable dependencies, create an input CSV file. The file is required to have a column with header "ARM ID". Any additional headers in the CSV file will be ignored. You can create the CSV using the file generated in the previous step. Create a copy of the file retaining the VMs you want to enable or  disable dependencies on. 
+```PowerShell
+Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "FabrikamDemoProject" -OutputCsvFile "FabrikamDemo_VMs.csv" -Filter @{"Property1" = "Value1" ; "Property2" = "Value2"}
+```
+
+Below are the properties you can use to filter the machines:
+   1. ServerName       - Property = ServerName, 
+                         Value = Display Name of the machine
+   2. IPaddresses      - Property = IPAddresses,
+                         Value = IP Address (a.b.c.d) or can be an IP Address range (a.b.c.d/24)
+   3. Source           - Property = Source, 
+                         Value = vCenter FQDN
+   4. DependencyStatus - Property = DependencyStatus, 
+                         Value = 'Enabled' or 'Disabled' or 'ValidationFailed'
+   5. OperatingSystem  - Property = osType, osName, osVersion, osArchitecture,
+                         Value = Type of the OS or Name of the OS or Version of the OS or        
+                                 Architecture of the OS respectively.
+   6. PowerStatus      - Property = PowerStatus,
+                         Value = 'ON' or 'OFF'
+   7. Tags             - Property = 'asrprotectedmachine', etc.,
+                         Value = value of the tag
+
+In the file, you can see the Server name, Source, Dependency Status, Dependency errors, Error time stamp, Dependency start time, Operating system, Power status, Appliance, Friendly name of credentials, Tgas and the ARM ID of all discovered VMs. 
+
+2. To enable or disable dependencies, create an input CSV file. The file is required to have a column with header "ARMID". Any additional headers in the CSV file will be ignored. You can create the CSV using the file generated in the previous step. Create a copy of the file retaining the VMs you want to enable or  disable dependencies on. 
 
 In the following example, dependency analysis is being enabled on the list of VMs in the input file FabrikamDemo_VMs_Enable.csv.
 
