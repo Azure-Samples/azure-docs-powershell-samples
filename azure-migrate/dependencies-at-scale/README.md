@@ -73,7 +73,7 @@ Below are the properties you can use to filter the machines:
    1. ServerName       - Property = ServerName, 
                          Value = Display Name of the machine
    2. IPaddresses      - Property = IPAddresses,
-                         Value = IP Address (a.b.c.d) or can be an IP Address range (a.b.c.d/24)
+                         Value = IP Address(a.b.c.d) or can be an IP Address range(a.b.c.d/24)
    3. Source           - Property = Source, 
                          Value = vCenter FQDN
    4. DependencyStatus - Property = DependencyStatus, 
