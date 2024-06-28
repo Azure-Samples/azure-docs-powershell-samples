@@ -173,7 +173,7 @@ function Get-AzMigDiscoveredMachines {
                | extend ErrorDetails = strcat('ID:', properties_dependencyMapDiscovery_errors.id, ', Code:', properties_dependencyMapDiscovery_errors.code, ', Message:', properties_dependencyMapDiscovery_errors.message)
                | summarize Error = make_list(ErrorDetails) by name
                ) on name
-               |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)" + "$filterquery" +
+               |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)" + "$filterQuery" +
                "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
 
     Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
@@ -195,7 +195,7 @@ function Get-AzMigDiscoveredMachines {
         }
 
         foreach ($entry in $graphResult.data) {
-            $machine = [PSCustomObject]($entry | Select-Object ServerName, Source, DependencyStatus, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID)
+            $machine = [PSCustomObject]($entry | Select-Object ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID)
             $kqlResult += $machine  
         }
 
