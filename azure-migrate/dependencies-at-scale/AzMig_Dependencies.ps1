@@ -1,10 +1,7 @@
 New-Variable -Name vmWareMaxLimit -Value 3000 -Option Constant
 New-Variable -Name hypervAndServerMaxLimit -Value 1000 -Option Constant
-New-Variable -Name AMH_APIVERSION -Value "?api-version=2018-09-01-preview" -Option Constant -Scope Script -Force
 New-Variable -Name SDS_APIVERSION -Value "?api-version=2020-01-01" -Option Constant -Scope Script -Force
 New-Variable -Name HyperVandServer_APIVERSION -Value "?api-version=2020-08-01-preview" -Option Constant -Scope Script -Force
-New-Variable -Name SAS_APIVERSION -Value "?api-version=2019-10-01" -Option Constant -Scope Script -Force
-New-Variable -Name RSV_APIVERSION -Value "?api-version=2018-07-10" -Option Constant -Scope Script -Force
 
 function GetRequestProperties() {
 
@@ -292,7 +289,7 @@ function Get-AzMigDiscoveredVMwareVMs {
             Write-Host "List of machines saved to" $OutputCsvFile
         } 
         else {
-           Write-Host "No machines discovered in the appliance $appliancename"
+           Write-Host "No machines discovered in the appliance $appliancename - Please check if you passed right input parameters and filters"
         }            
     }         
 } 
