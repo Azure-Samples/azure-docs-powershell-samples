@@ -24,20 +24,20 @@ function GetRequestProperties() {
         throw "Tenant not selected. Use Set-AzContext to select a subscription"
     }
 
-	$Environment = $CurrentContext.Environment.Name
-	
+    $Environment = $CurrentContext.Environment.Name
+
     $SubscriptionId = $CurrentContext.Subscription.Id
     if (-not $SubscriptionId) {
         throw "Tenant not selected. Use Set-AzContext to select a subscription"
     }
-	
-	if($Environment -eq "AzureUSGovernment") {
-		New-Variable -Name ResourceURL -Value "https://management.core.usgovcloudapi.net/" -Option Constant
-	}
-	else {
-		New-Variable -Name ResourceURL -Value "https://management.core.windows.net/" -Option Constant
-	}
 
+    if($Environment -eq "AzureUSGovernment") {
+        New-Variable -Name ResourceURL -Value "https://management.core.usgovcloudapi.net/" -Option Constant
+    }
+    else{
+        New-Variable -Name ResourceURL -Value "https://management.core.windows.net/" -Option Constant
+    }
+	
     $Token = (Get-AzAccessToken -ResourceUrl $ResourceURL -TenantId $TenantId).Token
     if (-not $Token) {
         throw "Missing token, please make sure you are signed in."
@@ -46,17 +46,17 @@ function GetRequestProperties() {
     $AuthorizationHeader = "Bearer " + $Token
     $Headers = [ordered]@{Accept = "application/json"; Authorization = $AuthorizationHeader} 
 	
-	if($Environment -eq "AzureUSGovernment") {
-		$baseurl = "https://management.usgovcloudapi.net"
-	}
-	else {
-		$baseurl = "https://management.azure.com" 
-	}
+    if($Environment -eq "AzureUSGovernment"){
+        $baseurl = "https://management.usgovcloudapi.net"
+    }
+    else{
+        $baseurl = "https://management.azure.com"
+    }
     
     return [ordered]@{
         SubscriptionId = $SubscriptionId
         Headers = $Headers
-		baseurl = $baseurl
+        baseurl = $baseurl
     }   
 }
 
@@ -202,7 +202,6 @@ function Get-AzMigDiscoveredMachines {
         if ($graphResult.data.Count -lt $batchSize) {
             break
         }
-
         $skipResult += $skipResult + $batchSize
     }
     return $kqlResult
@@ -232,20 +231,17 @@ function Get-AzMigDiscoveredVMwareVMs {
 
     #Fetching the Project Id
     $projectId = Get-AzMigProject -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
-
     if(-not $projectId) {
         throw "Project ID is invalid"
     }
     
     #Get Appliance Details
     $applianceDetails = Get-AzMigAppliances -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
-
     if(-not $applianceDetails) {
         throw "Server Discovery Solution missing Appliance Details. Invalid Solution"
     }
 
     $appMap = @{}
-
     foreach($row in $applianceDetails){    
         $appMap[$row.properties_applianceName] = $row.id
     }
@@ -319,18 +315,17 @@ function Set-AzMigDependencyMappingAgentless {
     }
 	
     $VMDetails = Import-CSV $InputCsvFile
-	
-	if(-not ($VMDetails[0].psobject.Properties.Name.ToLower().contains("armid")) ) {
-		throw "Input CSV file does not contain required column 'ARMID'"
-	}
+    if(-not ($VMDetails[0].psobject.Properties.Name.ToLower().contains("armid"))){
+        throw "Input CSV file does not contain required column 'ARMID'"
+    }
 
     if($Enable){ 
         $ActionVerb = "Enabled";
-		$EnableDependencyMapping = $true
+        $EnableDependencyMapping = $true
     } 
     elseif ($Disable) {
         $ActionVerb = "Disabled";
-		$EnableDependencyMapping = $false
+        $EnableDependencyMapping = $false
     } 
     else {
         throw "Error: Action to update dependency mapping is invalid. Please specify either Enable or Disable."
