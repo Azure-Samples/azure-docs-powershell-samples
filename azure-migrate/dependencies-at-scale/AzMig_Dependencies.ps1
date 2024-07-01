@@ -371,9 +371,13 @@ function Set-AzMigDependencyMappingAgentless {
             $type = $machinesinfo[$key]['type']
             [System.Collections.Generic.List[string]]$machinesAlreadyEnabled = Get-AzMigDiscoveredMachines -SiteId $Key -Filter @{"DependencyStatus" = "Enabled"}
             $machinesAlreadyEnabledCount = $machinesAlreadyEnabled.Count
-            $maxLimit
-            @({$maxLimit = '$hypervAndServerMaxLimit'},{$maxLimit = '$vmWareMaxLimit'})[$type -eq 'vmware']
-            $maxLimit 
+            if ($type -eq 'vmware') {
+                $maxLimit = $vmWareMaxLimit
+            } 
+            else {
+                $maxLimit = $hypervAndServerMaxLimit
+            }
+
             if ($machinesInfo[$key]['countOfMachinesToBeEnabled'] -gt ($maxLimit - $machinesAlreadyEnabledCount)) {
                 throw "Maximum limit exceeded for $type machines. Count of machines to be enabled: $($machinesInfo[$key]['countOfMachinesToBeEnabled']). Count of machines that can be enabled: $($maxLimit - $machinesAlreadyEnabledCount)"
             }
