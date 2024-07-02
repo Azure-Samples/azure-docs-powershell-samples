@@ -2,9 +2,8 @@
 $NSnetworkModels = "Microsoft.Azure.Commands.Network.Models"
 $NScollections = "System.Collections.Generic"
 
-Connect-AzAccount
 # The SubscriptionId in which to create these objects
-$SubscriptionId = ''
+$SubscriptionId = '<Enter subscription ID>'
 # Set the resource group name and location for your managed instance
 $resourceGroupName = "myResourceGroup-$(Get-Random)"
 $location = "eastus2"
@@ -33,6 +32,7 @@ $dbname = 'SampleDB'
 # <CreateResourceGroup>
 
 # Set subscription context
+Connect-AzAccount
 $subscriptionContextParams = @{
     SubscriptionId = $SubscriptionId
 }
