@@ -66,7 +66,7 @@ Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "F
 To fetch the machines from any specific appliance, you can use ApplianceName as a optional parameter:
 
 ```PowerShell
-Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "FabrikamDemoProject" -OutputCsvFile "FabrikamDemo_VMs.csv" -ApplianceName "appname"
+Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "FabrikamDemoProject" -OutputCsvFile "FabrikamDemo_VMs.csv" -ApplianceName "FabrikamDemoAppliance"
 ```
 
 To filter machines based on specific properties, you can use the Filter as an optional parameter:
