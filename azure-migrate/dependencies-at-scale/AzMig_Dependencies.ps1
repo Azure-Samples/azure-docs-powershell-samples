@@ -233,7 +233,7 @@ function Get-AzMigDiscoveredVMwareVMs {
     #Fetching the Project Id
     $projectId = Get-AzMigProject -ResourceGroupName $ResourceGroupName -ProjectName $ProjectName
     if(-not $projectId) {
-        throw "Project ID is invalid"
+        throw "Project is invalid"
     }
     
     #Get Appliance Details
