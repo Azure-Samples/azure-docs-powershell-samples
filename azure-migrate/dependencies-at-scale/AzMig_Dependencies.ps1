@@ -178,7 +178,6 @@ function Get-AzMigDiscoveredMachines {
                |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)" + "$filterQuery" +
                "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
 
-    Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
     $batchSize = 100
     $skipResult = 0
     $kqlResult = @()
@@ -276,6 +275,7 @@ function Get-AzMigDiscoveredVMwareVMs {
         if ($kqlResult) {
             $appliancename = $item.Key
             Write-Host "Machines discovered for $appliancename"
+            Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
             $headers = $kqlResult[0].PSObject.Properties | Select-Object -ExpandProperty Name
             $csvData = @()
             foreach ($machine in $kqlResult) {
