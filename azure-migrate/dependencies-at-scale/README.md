@@ -63,7 +63,13 @@ Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "F
 ```
 > Please note the project name in the above query is the same one that is displayed in the Azure Portal. 
 
-To filter machines based on specific properties, you can use the following command:
+To fetch the machines from any specific appliance, you can use ApplianceName as a optional parameter:
+
+```PowerShell
+Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "FabrikamDemoProject" -OutputCsvFile "FabrikamDemo_VMs.csv" -ApplianceName "appname"
+```
+
+To filter machines based on specific properties, you can use the Filter as an optional parameter:
 
 ```PowerShell
 Get-AzMigDiscoveredVMwareVMs -ResourceGroupName "FabrikamDemoRG" -ProjectName "FabrikamDemoProject" -OutputCsvFile "FabrikamDemo_VMs.csv" -Filter @{"Property1" = "Value1" ; "Property2" = "Value2"}
