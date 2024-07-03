@@ -289,7 +289,7 @@ function Get-AzMigDiscoveredVMwareVMs {
                 $csvData += New-Object PSObject -Property $row
             }
             $csvData | Export-Csv -Path $OutputCsvFile -NoTypeInformation -Append
-            Write-Host "List of "$numberofmachines" machines saved to" $OutputCsvFile
+            Write-Host "List of"$numberofmachines" machines saved to" $OutputCsvFile
         } 
         else {
            Write-Host "No machines discovered in the appliance $appliancename - Please check if you passed right input parameters and filters"
