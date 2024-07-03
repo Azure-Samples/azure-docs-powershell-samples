@@ -160,7 +160,7 @@ function Get-AzMigDiscoveredMachines {
                | extend ServerName = properties.displayName,
                DependencyStatus = iff(array_length(properties.dependencyMapDiscovery.errors) == 0, properties.dependencyMapping, 'ValidationFailed'),
                Source = properties.vCenterFQDN,
-               ErrorTimeStamp = properties.updatedTimestamp,
+               ErrorTimeStamp = iff(array_length(properties.dependencyMapDiscovery.errors) == 0, '', properties.updatedTimestamp),
                DependencyStartTime = properties.dependencyMappingStartTime,
                PowerStatus = properties.powerStatus,
                Appliance = '$appliancename',
@@ -175,7 +175,8 @@ function Get-AzMigDiscoveredMachines {
                | extend ErrorDetails = strcat('ID:', properties_dependencyMapDiscovery_errors.id, ', Code:', properties_dependencyMapDiscovery_errors.code, ', Message:', properties_dependencyMapDiscovery_errors.message)
                | summarize Error = make_list(ErrorDetails) by name
                ) on name
-               |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, ' Errors:', Error),OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)" + "$filterQuery" +
+               |extend DependencyErrors = strcat('DependencyScopeStatus:', todynamic(properties_dependencyMapDiscovery).discoveryScopeStatus, iff(array_length(Error) > 0, strcat(' Errors:', tostring(Error)), dynamic(null))), 
+                OperatingSystem = todynamic(properties_guestOSDetails),Tags = todynamic(tags)" + "$filterQuery" +
                "| project ServerName, Source, DependencyStatus, DependencyErrors, ErrorTimeStamp, DependencyStartTime, OperatingSystem, PowerStatus, Appliance, FriendlyNameOfCredentials, Tags, ARMID"
 
     $batchSize = 100
@@ -273,12 +274,14 @@ function Get-AzMigDiscoveredVMwareVMs {
         $kqlResult =  Get-AzMigDiscoveredMachines -SiteId $SiteId -appliancename $appliancename -Filter $Filter
 
         if ($kqlResult) {
+            $numberofmachines = 0
             $appliancename = $item.Key
             Write-Host "Machines discovered for $appliancename"
             Write-Host "Downloading machines for appliance " $appliancename ". This can take 1-2 minutes..."
             $headers = $kqlResult[0].PSObject.Properties | Select-Object -ExpandProperty Name
             $csvData = @()
             foreach ($machine in $kqlResult) {
+                $numberofmachines = $numberofmachines + 1
                 $row = [ordered]@{}       
                 foreach ($header in $headers) {
                     $row[$header] = $($machine.$header)
@@ -286,7 +289,7 @@ function Get-AzMigDiscoveredVMwareVMs {
                 $csvData += New-Object PSObject -Property $row
             }
             $csvData | Export-Csv -Path $OutputCsvFile -NoTypeInformation -Append
-            Write-Host "List of " $kqlResult.count__ " machines saved to" $OutputCsvFile
+            Write-Host "List of "$numberofmachines" machines saved to" $OutputCsvFile
         } 
         else {
            Write-Host "No machines discovered in the appliance $appliancename - Please check if you passed right input parameters and filters"
