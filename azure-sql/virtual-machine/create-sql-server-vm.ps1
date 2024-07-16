@@ -124,7 +124,7 @@ $Interface = New-AzNetworkInterface -Name $InterfaceName `
 # <CreateVirtualMachine>
 # Create a virtual machine configuration
 $VMName = $ResourceGroupName + "VM"
-$VMConfig = New-AzVMConfig -VMName $VMName -VMSize Standard_DS13_V2 |
+$VMConfig = New-AzVMConfig -VMName $VMName -VMSize $VMSize |
     Set-AzVMOperatingSystem -Windows -ComputerName $VMName -Credential $Cred -ProvisionVMAgent -EnableAutoUpdate |
     Set-AzVMSourceImage -PublisherName $PublisherName -Offer $OfferName -Skus $Sku  -Version $Version |
     Add-AzVMNetworkInterface -Id $Interface.Id
