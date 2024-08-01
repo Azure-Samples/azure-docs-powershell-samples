@@ -1,4 +1,4 @@
-﻿# Need to verify PS module to ensure have the new API for PUT Gateway
+# Need to verify PS module to ensure have the new API for PUT Gateway
 
 
 # Start preparing
@@ -20,25 +20,6 @@ $subnet =  Get-AzResource -ResourceId $gateway.Properties.ipConfigurations[0].pr
 $vnetName = $subnet.ParentResource.Substring($subnet.ParentResource.ToLower().IndexOf($vnetRegex.ToLower()) + $vnetRegex.Length, $subnet.ParentResource.Length - $subnet.ParentResource.ToLower().IndexOf($vnetRegex.ToLower()) - $vnetRegex.Length)
 $vnet = Get-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resourceGroup
 $subnet = Get-AzVirtualNetworkSubnetConfig -Name GatewaySubnet -VirtualNetwork $vnet
-
-# Verify there are at least 2 prefixes in gateway subnet, if not, ask customer add one
-if($subnet.AddressPrefix.Count -lt 2)
-{
-      Write-Host  "Gateway Subnet has " $subnet.AddressPrefix.Count "prefixes, needs at least 2, please add one more prefix"
-      $prefix = Read-Host "Enter new prefix"
-      $subnet.AddressPrefix.Add($prefix)
-      Set-AzVirtualNetworkSubnetConfig -Name GatewaySubnet -VirtualNetwork $vnet -AddressPrefix $subnet.AddressPrefix | Out-null
-      Set-AzVirtualNetwork -VirtualNetwork $vnet | Out-null
-      $vnet = Get-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resourceGroup
-      $subnet = Get-AzVirtualNetworkSubnetConfig -Name GatewaySubnet -VirtualNetwork $vnet
-}
-
-if($subnet.AddressPrefix.Count -lt 2)
-{
-      Write-Host  "Gateway Subnet has " $subnet.AddressPrefix.Count "prefixes, needs at least 2, please add one more prefix"
-      Read-Host "Enter anything to exit, Prepare for migration failed"
-      exit
-}
 
 # Verify all resources are in succeeded state
 if($gateway.Properties.provisioningState -ne "Succeeded")
@@ -67,7 +48,7 @@ $prefix = Read-Host "Please choose the suffix for new resources, new resource na
 $pipName = $pip.Name + "_" + $prefix
 $ipconfigName = $gateway.Properties.ipConfigurations[0].name + "_" + $prefix
 $gatewayName = $gateway.Name + "_" + $prefix
-$zone = Read-Host "Please select zones for new gateway, for non-Az region, do not enter anything"
+$zone = Read-Host "Please select zones for new gateway"
 $gatewaySku = Read-Host "Please choose the sku for new gateway [ErGw1AZ|ErGw2AZ|ErGw3AZ]"
 
 if($pipName.Length -gt 80)
@@ -85,17 +66,14 @@ if($gatewayName.Length -gt 80)
     $gatewayName = $gatewayName.Substring(0,80)
 }
 
-if([string]::IsNullOrEmpty($zone))
-{
-    $zone = $null
-}
-
 $pipNew = New-AzPublicIpAddress -Name $pipName -ResourceGroupName $resourceGroup -Location $location -AllocationMethod Static -Sku Standard -Zone $zone -Force
 $subnetNew = Get-AzVirtualNetworkSubnetConfig -Name GatewaySubnet -VirtualNetwork $vnet
 $ipconfNew = New-AzVirtualNetworkGatewayIpConfig -Name $ipconfigName -Subnet $subnetNew -PublicIpAddress $pipNew
 $startTime = Get-Date
 Write-Host "---------------- Creating new gateway" $gatewayName "Sku" $gatewaySku "----------------" 
 New-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup -Location $location -IpConfigurations $ipconfNew -GatewayType Expressroute -GatewaySku $gatewaysku -AdminState Disabled -Force | Out-null
+$gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
+Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayNew -AllowRemoteVnetTraffic $gateway.AllowRemoteVnetTraffic -AllowVirtualWanTraffic $gateway.AllowVirtualWanTraffic
 $gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
 if($gatewayNew.ProvisioningState -ne "Succeeded")
 {
@@ -104,13 +82,15 @@ if($gatewayNew.ProvisioningState -ne "Succeeded")
           exit
 }
 
+Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayNew -AllowRemoteVnetTraffic $true -AllowVirtualWanTraffic $true
 
 foreach($connection in $connections)
 {
         $connName = $connection.Name + "_" + $prefix
         $circuitId = $connection.Peer.Id
+
         Write-Host "---------------- Creating new connection" $connName "with circuit" $circuitId "----------------"
-        New-AzVirtualNetworkGatewayConnection -Name $connName -ResourceGroupName $resourceGroup -Location $location -VirtualNetworkGateway1 $gatewayNew -PeerId $circuitId -ConnectionType ExpressRoute | Out-null
+        New-AzVirtualNetworkGatewayConnection -Name $connName -ResourceGroupName $resourceGroup -Location $location -VirtualNetworkGateway1 $gatewayNew -PeerId $circuitId -ConnectionType ExpressRoute -RoutingWeight $connection.RoutingWeight | Out-null
 }
 
 $connectionsNew = Get-AzVirtualNetworkGatewayConnection -ResourceGroupName $resourceGroup | Where-Object -FilterScript {$_.VirtualNetworkGateway1.Name -contains $prefix} 
