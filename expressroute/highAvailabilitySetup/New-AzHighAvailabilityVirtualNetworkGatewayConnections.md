@@ -1,7 +1,7 @@
-# New-AzHighAvailabilityExpressRouteCircuits.ps1
+# New-AzHighAvailabilityVirtualNetworkGatewayConnections.ps1
 ## Syntax
 ```
-New-AzHighAvailabilityExpressRouteCircuits
+New-AzHighAvailabilityVirtualNetworkGatewayConnections
 	-SubscriptionId <String>
 	-ResourceGroupName <String> 
 	-Location <String> 
@@ -20,24 +20,14 @@ New-AzHighAvailabilityExpressRouteCircuits
 ```
 
 ## Description
-The  **New-AzHighAvailabilityExpressRouteCircuits**  cmdlet creates a pair of Azure express route circuit.
+The  **New-AzHighAvailabilityVirtualNetworkGatewayConnections**  cmdlet creates a pair of Azure express route virtual network gateway connections.
 
 ## Examples
-### Example 1: Create 2 new circuits, both on provider
+### Example 1: Create 2 new connections.
 ```
- .\New-AzHighAvailabilityExpressRouteCircuits.ps1 -SubscriptionId $SubscriptionId -ResourceGroupName $resourceGroupName -Location "westus" -Name1 $circuit1Name -Name2 $circuit2Name -SkuFamily1 "MeteredData" -SkuFamily2 "MeteredData" -SkuTier1 "Standard" -SkuTier2 "Standard" -ServiceProviderName1 "Equinix" -ServiceProviderName2 "Equinix" -PeeringLocation1 "Silicon Valley" -PeeringLocation2 "Washington DC" -BandwidthInMbps 1000
+ .\New-AzHighAvailabilityVirtualNetworkGatewayConnections.ps1 -SubscriptionId <subId> -ResourceGroupName <rgName> -Location <locationName> -Name1 <connection1Name> -Name2 <connection2Name> -Peer1 $circuit1.Peerings[0] -Peer2 $circuit2.Peerings[0] -RoutingWeight1 10 -RoutingWeight2 10 -VirtualNetworkGateway1 $vng
 ```
-### Example 2:  Create 2 new circuits, both on port
+### Example 2:  Create 1 new connection, and use existing connection to get recommendation
 ```
-$portResource1 = Get-AzExpressRoutePort -ResourceGroupName $resourceGroupName -Name $portName
-
-$portResource2 = Get-AzExpressRoutePort -ResourceGroupName $resourceGroupName -Name $port2Name
-
-.\New-AzHighAvailabilityExpressRouteCircuits.ps1 -SubscriptionId $SubscriptionId -ResourceGroupName $resourceGroupName -Location "westus" -Name1 $circuit1Name -Name2 $circuit2Name -SkuFamily1 "MeteredData" -SkuFamily2 "MeteredData" -SkuTier1 "Standard" -SkuTier2 "Standard" -BandwidthInMbps 5000 -ExpressRoutePort1 $portResource1 -ExpressRoutePort2 $portResource2
-```
-### Example 3:  Create 1 new circuit, and use existing circuit to get recommendation
-```
-$existingCircuit = Get-AzExpressRouteCircuit -Name $existingCircuitName -ResourceGroupName $resourceGroupName 
-
-.\New-AzHighAvailabilityExpressRouteCircuits.ps1 -SubscriptionId $SubscriptionId -ResourceGroupName $resourceGroupName -Location "westus" -Name2 $circuitName -SkuFamily2 "MeteredData" -SkuTier2 "Standard" -ServiceProviderName2 "Equinix" -PeeringLocation2 "dallas" -BandwidthInMbps 1000 -ExistingCircuit $existingCircuit
-```
+ .\New-AzHighAvailabilityVirtualNetworkGatewayConnections.ps1 -SubscriptionId <subId> -ResourceGroupName <rgName> -Location <locationName> -Name2 <connectionName> -Peer2 $circuit1.Peerings[0] -RoutingWeight2 10 -VirtualNetworkGateway1 $vng -ExistingVirtualNetworkGatewayConnection $connection
+```  
