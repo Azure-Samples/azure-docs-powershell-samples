@@ -162,4 +162,4 @@ $endTime = Get-Date
 $diff = New-TimeSpan -Start $startTime -End $endTime
 # Preparetion completed!
 Write-Host "---------------- Prepare for migration for" $gatewayUri "is completed! Taking" $diff.TotalMinutes "minutes ----------------"
-Read-Host "Enter anything to exit""
+Read-Host "Enter anything to exit"
