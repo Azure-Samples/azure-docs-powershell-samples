@@ -3,7 +3,6 @@
 1. Enable AFEC flag on customer subscription:
    - AllowDeletionOfIpPrefixFromSubnet
    - AllowMultipleAddressPrefixesOnSubnet
-1. Customer need to add a second prefix to gateway subnet via PowerShell
 1. Install the latest PowerShell for Az.Network Module to have the new API to enable/disable gateway
 1. Run `PrepareMigration.ps1`, this script performs validation and create all new resources :
    gateway and connections
