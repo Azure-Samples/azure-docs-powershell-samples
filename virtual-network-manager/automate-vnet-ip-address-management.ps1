@@ -1,5 +1,6 @@
 # automate-vnet-ip-address-management.ps1
-# Version: 1.0.0
+# Version: 1.0.1
+# Change log: Remove PID from script
 # Author: mbender-ms 
 # Date: 2025-03-10
 # Description: This script automates the process of creating, associating, and disassociating Virtual Networks with IPAM Pools in Azure. It uses PowerShell to interact with Azure resources and manage IP address allocations efficiently. The script is designed to be run in a synchronous manner to ensure that no API calls fail such that they need to be retried. The script includes bulk creation of Virtual Networks using IpamPools reference, association of existing Virtual Networks using IpamPool reference, and disassociation of existing Virtual Networks using IpamPool reference. It is for demonstrtation purposes only and should not be used in production environments.
@@ -17,10 +18,10 @@
 
 # Set the variables for the script to your environment
 
-$location = "East US"#"<your resource location>" # e.g. "East US", "West Europe", etc.
-$rgname = "demo-rg"#"<your resource group>" # use RG name as "*" to fetch all VNets from all RGs within subscription
-$sub = "d9f0f529-83ab-4840-9c8b-76db5d68517f"#"<your subscription id>" # use subscription id as "*" to fetch all VNets from all subscriptions within tenant
-$ipamPoolARMId = "/subscriptions/d9f0f529-83ab-4840-9c8b-76db5d68517f/resourceGroups/rg-avnm-sample/providers/Microsoft.Network/networkManagers/network-manager/ipamPools/ipam-pool"#"<your ipam pool ARM ID>" # e.g. "/subscriptions/<your subscription id>/resourceGroups/<your resource group>/providers/Microsoft.Network/ipamPools/<your ipam pool name>"
+$location = "<your resource location>" # e.g. "East US", "West Europe", etc.
+$rgname = "<your resource group>" # use RG name as "*" to fetch all VNets from all RGs within subscription
+$sub = "<your subscription id>" # use subscription id as "*" to fetch all VNets from all subscriptions within tenant
+$ipamPoolARMId = "<your ipam pool ARM ID>" # e.g. "/subscriptions/<your subscription id>/resourceGroups/<your resource group>/providers/Microsoft.Network/ipamPools/<your ipam pool name>"
 $numberIPaddresses = "8" # Number of IP addresses to allocate from the IPAM Pool. This should be a valid number based on your IPAM Pool configuration.
 
 # Select your subscription
