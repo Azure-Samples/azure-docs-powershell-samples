@@ -2,18 +2,17 @@ $ErrorActionPreference = "stop"
 
 <#
 .SYNOPSIS
-    Automates the setup needed for setting up migration assistant volume and replication.
+    Automates creation of a migration volume and replication setup.
 
 .DESCRIPTION
     This script is a guide through creating a migration volume and peering clusters for the migration assistant. 
-    It invokes three requests from ANF needed to set up the migration workflow and informs the user about the commands that need to be run on-premises:
+    It invokes three requests from ANF needed to set up the migration workflow and informs the user about the two commands that need to be run on-premises:
 
       1. Creates a new migration volume on your target ANF capacity pool  
       2. Peers the target cluster with the external (source) on-premises cluster
       3. Prints the local peering command which needs to be executed manually on the external on-premises cluster 
       4. Authorizes the replication relationship from the ANF migration volume
-      5. Prints the svm peering command which needs to be execusted manually on the external on-premises cluster
-
+      5. Prints the svm peering command which needs to be executed manually on the external on-premises cluster
 
    The top of the script contains all parameters that need to be filled in for the script to run correctly.
 #>
@@ -48,7 +47,7 @@ $subnet_name = "<netapp-files-delegated-subnet-name>"
 # Insert the name of the migration volume here (this is the new ANF target volume). Make sure that this name is unique. A new volume will be created.
 $migration_volume_name = "<your-migration-volume-name>"
 
-# Insert the size of the migration volume here. Make sure it has enough capacity to accomodate for the actual size of the migrated volume plus extra space for new changes.
+# Insert the size of the migration volume here. Make sure it has enough capacity to accommodate for the actual size of the migrated volume plus extra space for new changes.
 $migration_volume_size_gb = 50
 
 # Insert the capacity pool name for the ANF capacity pool that the migration volume will go to. It should already exist and there should be a small "anchor" volume on it too.
@@ -68,7 +67,7 @@ $location = "<your-region>"
 
 # This is a PowerShell array containing the intercluster lifs (peer addresses) of the on premises cluster
 # ONTAP> network interface show -role intercluster
-$lifs = @("<peer-ip-address>","<another-peer-ip-address")
+$lifs = @("<peer-ip-address>","<another-peer-ip-address>")
 
 
 #########################
@@ -83,7 +82,7 @@ $capacity_pool_id = "/subscriptions/${subscription_id}/resourceGroups/${resource
 
 # Create a new volume ID from $migration_volume_name and $capacity_pool_id and set the size in bytes
 $volume_id = "${capacity_pool_id}/volumes/${migration_volume_name}"
-$volume_size_bytes = $migration_volume_size_gb * 1Gb
+$volume_size_bytes = $migration_volume_size_gb * 1GB
 
 # Create the URLs that we'll need
 $url_volume = "https://management.azure.com${volume_id}?api-version=$api_version"
@@ -94,6 +93,8 @@ $url_authorize_external_replication = "https://management.azure.com${volume_id}/
 $headers = @{"Authorization"= "Bearer $token"}
 
 # Create the JSON containing the body for the first request creating the migration volume on ANF
+# Note that this example creates an NSF volume, it is also possible to create a SMB or dual protocol volume 
+# Details can be found in the API documentation: https://learn.microsoft.com/en-us/rest/api/netapp/volumes/create-or-update?view=rest-netapp-2025-03-01&tabs=HTTP#request-body
 $request_body_template_json_volume = @"
 {
     "type":"Microsoft.NetApp/netAppAccounts/capacityPools/volumes",
@@ -144,7 +145,7 @@ $request_body_template_json_volume = @"
     }
 "@
 
-# Convert the JSON to a Powershell custom object 
+# Convert the JSON to a PowerShell custom object 
 $request_body_template_volume = $request_body_template_json_volume | convertfrom-json 
 
 # Set the variables as were filled in above
@@ -156,7 +157,7 @@ $request_body_template_volume.properties.creationToken = $migration_volume_name
 $request_body_template_volume.properties.usageThreshold = $volume_size_bytes
 $request_body_template_volume.location = $location
 
-# Convert the Powershell custom object back to json
+# Convert the PowerShell custom object back to json
 $request_body_volume_json = $request_body_template_volume | ConvertTo-Json -Depth 99 
 
 # Send the request to create a migration volume on ANF
@@ -174,7 +175,7 @@ while ($volume_status -ne "Succeeded"){
     Write-Host "Current status: ${volume_status}"
     Write-Host "Correlation ID: ${volume_put_correlation_id}"
     if($volume_status -eq "Failed"){
-        write-host "Error creating volume."
+        Write-Host "Error creating volume."
         $volume_create_request_ps_custom_object
         throw "Error creating volume."
     }
@@ -201,11 +202,11 @@ $request_peer_external_cluster_async_json = $request_peer_external_cluster_async
 
 while ($request_peer_external_cluster_async_json.status -ne "Succeeded"){
     $peer_external_cluster_status = $request_peer_external_cluster_async_json.status
-    Write-Host "Waiting on Azure cluster peering. reating NICs in delegated subnet and preparing the stamp, etc.."
+    Write-Host "Waiting on Azure cluster peering. Creating NICs in delegated subnet and preparing the stamp, etc.."
     Write-Host "Current status: $peer_external_cluster_status"
     Write-Host "Correlation ID: ${peer_external_correlation_id}"
     if($peer_external_cluster_status -eq "Failed"){
-        write-host "Error peering clusters."
+        Write-Host "Error peering clusters."
         $request_peer_external_cluster_async_json
         throw "Error peering clusters."
     }
@@ -249,7 +250,7 @@ while ($request_authorize_external_replication_async_json.status -ne "Succeeded"
     Write-Host "Current status: $authorize_replication_status"
     Write-Host "Correlation ID: ${authorize_replication_correlation_id}"
     if($authorize_replication_status -eq "Failed"){
-        write-host "Error creating vserver peering."
+        Write-Host "Error creating vserver peering."
         $request_authorize_external_replication_async_json
         throw "Error creating vserver peering."
     }
