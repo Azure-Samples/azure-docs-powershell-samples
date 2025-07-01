@@ -21,11 +21,6 @@ $ErrorActionPreference = "stop"
 # Fill in variables here
 ######################################
 
-# Get the token for your user from Azure (get-azaccesstoken).token
-$token = @"
-<your-access-token>
-"@
-
 # Use this API version
 $api_version = "2025-01-01"
 
@@ -90,6 +85,7 @@ $url_peer_external_cluster = "https://management.azure.com${volume_id}/peerExter
 $url_authorize_external_replication = "https://management.azure.com${volume_id}/authorizeExternalReplication?api-version=$api_version"
 
 # Create the headers from the token for authentication
+$token = (Get-AzAccessToken).token
 $headers = @{"Authorization"= "Bearer $token"}
 
 # Create the JSON containing the body for the first request creating the migration volume on ANF
