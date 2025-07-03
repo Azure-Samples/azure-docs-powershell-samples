@@ -84,8 +84,10 @@ $url_volume = "https://management.azure.com${volume_id}?api-version=$api_version
 $url_peer_external_cluster = "https://management.azure.com${volume_id}/peerExternalCluster?api-version=$api_version"
 $url_authorize_external_replication = "https://management.azure.com${volume_id}/authorizeExternalReplication?api-version=$api_version"
 
-# Create the headers from the token for authentication
-$token = (Get-AzAccessToken).token
+# Get the token for authentication and create the headers containing it
+$secureString = (Get-AzAccessToken).Token
+$ssPtr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureString)
+$token = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($ssPtr)
 $headers = @{"Authorization"= "Bearer $token"}
 
 # Create the JSON containing the body for the first request creating the migration volume on ANF
@@ -262,3 +264,6 @@ $svmPeeringCommand = $request_authorize_external_replication_async_json.properti
 
 # Inform about local cluster peering command to be executed manually on-premises
 Write-Host "Complete local SVM peering with this command: ${svmPeeringCommand}"
+
+# Ensure the token is not left in memory
+$token = [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ssPtr)
