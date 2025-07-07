@@ -754,34 +754,6 @@ function enableFeatureOnVmList(
 
         $Global:Error.Clear()
         try {
-            # First try direct execution with a timeout via PowerShell's ExecutionTimeLimit
-            $executionStartTime = Get-Date
-            $executionTimeoutMinutes = 10 # 10 minute timeout
-            $executionTimeoutSeconds = $executionTimeoutMinutes * 60
-            $executionTimeLimit = New-TimeSpan -Minutes $executionTimeoutMinutes
-
-            # Try with direct execution first
-            if ($PSVersionTable.PSVersion.Major -ge 7) {
-                # PowerShell 7+ supports native command timeouts
-                try {
-                    $settingString = get-SqlFeatureSettingString -FeatureName $FeatureName -EnableFeature $EnableFeature
-                    Set-AzVMExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $name `
-                                    -Name $extensionName -Publisher $publisher -Type $extensionType `
-                                    -TypeHandlerVersion $typeHandlerVersion -SettingString $settingString `
-                                    -ErrorAction Stop -TimeoutSec $executionTimeoutSeconds
-                    
-                    $Global:RegisteredVMs.Add($vm) | Out-Null
-                    Write-Verbose "Successfully configured feature on VM $($vm.Name)"
-                    $completed++
-                    continue # Skip job-based approach if direct execution succeeds
-                }
-                catch {
-                    Write-Verbose "Direct execution failed, will try job-based approach for VM $($vm.Name)"
-                    $Global:Error.Clear() # Clear errors to try job approach
-                }
-            }
-            
-            # Fallback to job approach
             $settingstring = get-SqlFeatureSettingString -FeatureName $FeatureName -EnableFeature $EnableFeature
             $jobScript = {
                 param($resourceGroupName, $location, $name, $extensionName, $publisher, 
