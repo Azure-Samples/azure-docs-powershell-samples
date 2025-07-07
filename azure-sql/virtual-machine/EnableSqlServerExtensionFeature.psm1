@@ -10,25 +10,33 @@
     Enable or disable SQL IaaS extension features for Azure VMs running SQL Server.
 
     .DESCRIPTION
-    Identify and enable or disable SQL IaaS extension features for all Azure VMs running SQL Server on Windows in a list of subscriptions, resource group list, particular resource group or a particular VM.
-    The cmdlet configures features supported by the SQL IaaS extension and generates a report and a log file at the end of the execution. The report is generated as a txt file named
-    SqlExtensionFeatureReport<Timestamp>.txt. Errors are logged in the log file named SqlExtensionFeatureError<Timestamp>.log. Timestamp is the
-    time when the cmdlet was started. A summary is displayed at the end of the script run.
-    The Output summary contains the number of VMs that successfully configured the feature, failed or were skipped because of various reasons. The detailed list
-    of VMs can be found in the report and the details of error can be found in the log.
+    Identify and enable or disable SQL IaaS extension features for all Azure VMs 
+    running SQL Server on Windows in a list of subscriptions, resource group list,
+    particular resource group or a particular VM.
+    
+    The cmdlet configures features supported by the SQL IaaS extension and 
+    generates a report and a log file at the end of the execution. The report is 
+    generated as a txt file named SqlExtensionFeatureReport<Timestamp>.txt. Errors 
+    are logged in the log file named SqlExtensionFeatureError<Timestamp>.log. 
+    Timestamp is the time when the cmdlet was started. A summary is displayed at 
+    the end of the script run.
+    
+    The Output summary contains the number of VMs that successfully configured the 
+    feature, failed or were skipped because of various reasons. The detailed list
+    of VMs can be found in the report and the details of error can be found in the 
+    log.
 
     Prerequisites:
-    - The script needs to be run on Powershell 5.1 (Windows Only) and is incompatible with Powershell 6.x
-    - The subscription whose VMs are to be registered, needs to be registered to Microsoft.SqlVirtualMachine resource provider first. This link describes
-      how to register to a resource provider: https://docs.microsoft.com/azure/azure-resource-manager/resource-manager-supported-services
-    - Run 'Connect-AzAccount' to first connect the powershell session to the azure account.
-    - The Client credentials must have one of the following RBAC levels of access over the virtual machine being registered: Virtual Machine Contributor,
+    - Run 'Connect-AzAccount' to first connect the powershell session to the azure 
+      account.
+    - The Client credentials must have one of the following RBAC levels of access 
+      over the virtual machine being registered: Virtual Machine Contributor,
       Contributor or Owner
-    - The script requires Az powershell module (>=2.8.0) to be installed. Details on how to install Az module can be found 
-      here : https://docs.microsoft.com/powershell/azure/install-az-ps?view=azps-2.8.0
-      It specifically requires Az.Compute, Az.Accounts and Az.Resources module which comes as part of Az module (>=2.8.0) installation.
-    - The script also requires Az.SqlVirtualMachine module. Details on how to install Az.SqlVirtualMachine can be
-      found here: https://www.powershellgallery.com/packages/Az.SqlVirtualMachine/0.1.0
+    - The script requires Az powershell module to be installed. Details 
+      on how to install Az module can be found here: 
+      https://docs.microsoft.com/powershell/azure/install-az-ps
+      It specifically requires Az.Compute and Az.Accounts modules which come as 
+      part of the Az module installation.
 
     .PARAMETER SubscriptionList
     List of Subscriptions whose VMs need to be registered
@@ -50,24 +58,21 @@
 
     .PARAMETER FeatureName
     Name of the SQL IaaS extension feature to enable or disable. 
-    Common feature names include:
+    Example feature names include:
     - "SqlInstanceInventoryUploadForAzureVM" - Enables inventory upload for SQL VMs
-    - "BackupRestore" - Enables Azure Backup integration
-    - "AutoPatch" - Enables automatic patching
-    - "AutoBackup" - Enables automatic backup
-    - "KeyVault" - Enables Azure Key Vault integration
-    - "StorageConfigurationSettings" - Enables storage configuration
 
     .PARAMETER EnableFeature
     Specify $true to enable the feature or $false to disable the feature
 
     .EXAMPLE
     # To enable SQL IaaS extension feature on all VMs in a list of subscriptions
-    Enable-SqlServerExtensionFeature -SubscriptionList SubscriptionId1,SubscriptionId2 -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    Enable-SqlServerExtensionFeature -SubscriptionList SubscriptionId1,SubscriptionId2 `
+        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+    -------------------------------------------------------------------------------
     Summary
-    -----------------------------------------------------------------------------------------------------------------------------------------------
-    Number of Subscriptions failed for because you do not have access or credentials are wrong: 1
+    -------------------------------------------------------------------------------
+    Number of Subscriptions failed for because you do not have access or 
+    credentials are wrong: 1
     Total VMs Found: 10
     VMs Already configured: 1
     Number of VMs configured feature successfully: 4
@@ -77,14 +82,15 @@
     
     Please find the detailed report in file SqlExtensionFeatureReport1571314821.txt
     Please find the error details in file SqlExtensionFeatureError1571314821.log
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
 
     .EXAMPLE
     # To disable a specific feature on all VMs in a subscription
-    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $false
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
+        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $false
+    -------------------------------------------------------------------------------
     Summary
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
     Total VMs Found: 10
     VMs Already configured: 1
     Number of VMs configured feature successfully: 5
@@ -94,14 +100,15 @@
     
     Please find the detailed report in file SqlExtensionFeatureReport1571314821.txt
     Please find the error details in file SqlExtensionFeatureError1571314821.log
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
 
     .EXAMPLE
     # To enable a custom feature on all VMs in a single subscription
-    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 -FeatureName "CustomSqlFeature" -EnableFeature $true
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
+        -FeatureName "CustomSqlFeature" -EnableFeature $true
+    -------------------------------------------------------------------------------
     Summary
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
     Total VMs Found: 10
     VMs Already configured: 1
     Number of VMs configured feature successfully: 5
@@ -111,14 +118,17 @@
     
     Please find the detailed report in file SqlExtensionFeatureReport1571314821.txt
     Please find the error details in file SqlExtensionFeatureError1571314821.log
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
 
     .EXAMPLE
-    # To enable SQL IaaS extension feature on all VMs in a single subscription and multiple resource groups
-    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 -ResourceGroupList ResourceGroup1,ResourceGroup2 -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    # To enable SQL IaaS extension feature on all VMs in a single subscription 
+    # and multiple resource groups
+    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
+        -ResourceGroupList ResourceGroup1,ResourceGroup2 `
+        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+    -------------------------------------------------------------------------------
     Summary
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
     Total VMs Found: 4
     VMs Already configured: 1
     Number of VMs configured feature successfully: 1
@@ -127,14 +137,16 @@
     
     Please find the detailed report in file SqlExtensionFeatureReport1571314821.txt
     Please find the error details in file SqlExtensionFeatureError1571314821.log
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
 
     .EXAMPLE
     # To enable SQL IaaS extension feature on all VMs in a resource group
-    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 -ResourceGroupName ResourceGroup1 -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
+        -ResourceGroupName ResourceGroup1 `
+        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+    -------------------------------------------------------------------------------
     Summary
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
     Total VMs Found: 4
     VMs Already configured: 1
     Number of VMs configured feature successfully: 1
@@ -143,14 +155,16 @@
     
     Please find the detailed report in file SqlExtensionFeatureReport1571314821.txt
     Please find the error details in file SqlExtensionFeatureError1571314821.log
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
 
     .EXAMPLE
     # To disable a feature on multiple VMs in a single subscription and resource group
-    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 -ResourceGroupName ResourceGroup1 -VmList VM1,VM2,VM3 -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $false
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
+        -ResourceGroupName ResourceGroup1 -VmList VM1,VM2,VM3 `
+        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $false
+    -------------------------------------------------------------------------------
     Summary
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
     Total VMs Found: 3
     VMs Already configured: 0
     Number of VMs configured feature successfully: 1
@@ -159,20 +173,22 @@
     
     Please find the detailed report in file SqlExtensionFeatureReport1571314821.txt
     Please find the error details in file SqlExtensionFeatureError1571314821.log
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
 
     .EXAMPLE
     # To enable SQL IaaS extension feature on a particular VM
-    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 -ResourceGroupName ResourceGroup1 -Name VM1 -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
+        -ResourceGroupName ResourceGroup1 -Name VM1 `
+        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+    -------------------------------------------------------------------------------
     Summary
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
     Total VMs Found: 1
     VMs Already configured: 0
     Number of VMs configured feature successfully: 1
     
     Please find the detailed report in file SqlExtensionFeatureReport1571314821.txt
-    -----------------------------------------------------------------------------------------------------------------------------------------------
+    -------------------------------------------------------------------------------
 
     .LINK
     https://aka.ms/RegisterSqlVMs
@@ -230,7 +246,8 @@ function Enable-SqlServerExtensionFeature {
         #loop over all subscriptions to enable feature on VMs
         foreach ($SubscriptionName in $SubscriptionList) {
             [int]$percent = ($subsCompleted * 100) / $SubscriptionList.Count
-            Write-Progress -Activity "Configure SQL Extension Feature in $($SubscriptionName) $($subsCompleted+1)/$($SubscriptionList.Count)" -Status "$percent% Complete:" -PercentComplete $percent -CurrentOperation "ConfigureFeatureInSub" -Id 1;
+            Write-Progress -Activity "Configure SQL Extension Feature in $($SubscriptionName) $($subsCompleted+1)/$($SubscriptionList.Count)" `
+                -Status "$percent% Complete:" -PercentComplete $percent -CurrentOperation "ConfigureFeatureInSub" -Id 1;
             if (assert-Subscription -Subscription $SubscriptionName) {
                 enable-FeatureForSubscription -Subscription $SubscriptionName -FeatureName $FeatureName -EnableFeature $EnableFeature
             }
@@ -410,21 +427,31 @@ function handleError(
     if ($null -eq $VmObject) {
         $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
         $errorMessage = $ErrorObject.Exception.Message
-        $errorCode = if ($ErrorObject.Exception.HResult) { "0x" + [Convert]::ToString($ErrorObject.Exception.HResult, 16) } else { "Unknown" }
+        $errorCode = if ($ErrorObject.Exception.HResult) { 
+            "0x" + [Convert]::ToString($ErrorObject.Exception.HResult, 16) 
+        } else { 
+            "Unknown" 
+        }
         
         # Log with details available
-        Write-Output "$($timestamp), Unknown, Unknown, Unknown, $($errorCode), $($errorMessage)" | Out-File $Global:LogFile -Append
+        Write-Output "$($timestamp), Unknown, Unknown, Unknown, $($errorCode), $($errorMessage)" | 
+            Out-File $Global:LogFile -Append
         Write-Verbose "Failed to configure feature. Error: $($errorMessage)"
         return
     }
     
     $subID = $VmObject.Id.Split("/")[2]
     $errorMessage = $ErrorObject.Exception.Message
-    $errorCode = if ($ErrorObject.Exception.HResult) { "0x" + [Convert]::ToString($ErrorObject.Exception.HResult, 16) } else { "Unknown" }
+    $errorCode = if ($ErrorObject.Exception.HResult) { 
+        "0x" + [Convert]::ToString($ErrorObject.Exception.HResult, 16) 
+    } else { 
+        "Unknown" 
+    }
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     
     # Log with more details
-    Write-Output "$($timestamp), $($subID), $($VmObject.ResourceGroupName), $($VmObject.Name), $($errorCode), $($errorMessage)" | Out-File $Global:LogFile -Append
+    Write-Output "$($timestamp), $($subID), $($VmObject.ResourceGroupName), $($VmObject.Name), $($errorCode), $($errorMessage)" | 
+        Out-File $Global:LogFile -Append
     
     # Add to failed VMs and write to console
     $Global:FailedVMs.Add($VmObject) | Out-Null
@@ -437,7 +464,7 @@ function handleError(
 #>
 function new-DashSeperator() {
     Write-Host
-    Write-Host "-----------------------------------------------------------------------------------------------------------------------------------------------"
+    Write-Host "-------------------------------------------------------------------------------"
 }
 
 <#
@@ -596,22 +623,7 @@ function assert-Subscription(
         $Global:SubscriptionsFailedToConnect.Add($Subscription) | Out-Null
         return $false
     }
-
-    # register Subscription with SQL VM RP
-    $registration = Get-AzResourceProvider -ProviderNamespace Microsoft.SqlVirtualMachine -ErrorAction SilentlyContinue
-    if ((!$registration) -or ($registration[0].RegistrationState -ne 'Registered')) {
-        # try register subscription to the SqlVirtualMachine
-        $register = Register-AzResourceProvider -ProviderNamespace Microsoft.SqlVirtualMachine -ErrorAction SilentlyContinue
-        if ((!$register) -or ($register.RegistrationState -ne 'Registering')) {
-            $errorMessage = "$($Subscription), Subscription $($Subscription) should be registered to 'Microsoft.SqlVirtualMachine'. Steps to register can be found here: https://docs.microsoft.com/azure/azure-resource-manager/resource-manager-supported-services. This registration may take around 5 mins to propagate."
-        }
-        else {
-            $errorMessage = "$($Subscription), Subscription $($Subscription) is registering to 'Microsoft.SqlVirtualMachine'. This registration may take around 5 mins to propagate. Run the script again for this subscription."
-        }
-        Write-Output $errorMessage | Out-File $Global:LogFile -Append
-        $Global:SubscriptionsFailedToRegister.Add($Subscription) | Out-Null
-        return $false
-    }
+    
     return $true
 }
 
@@ -657,7 +669,8 @@ function enable-FeatureForSubscription (
     while (($retryCount -le $MAX_RETRIES) -and ($vmList.Count -gt 0)) {
         if ($retryCount -gt 0) {
             [int]$percent = ($retryCount * 100) / $MAX_RETRIES
-            Write-Progress -Activity "Retrying feature enablement" -Status "$percent% Complete:" -PercentComplete $percent -CurrentOperation "Retrying" -Id 2;
+            Write-Progress -Activity "Retrying feature enablement" -Status "$percent% Complete:" `
+                -PercentComplete $percent -CurrentOperation "Retrying" -Id 2;
         }
         $retryCount++
         if ($retryCount -eq $MAX_RETRIES) {
@@ -666,7 +679,8 @@ function enable-FeatureForSubscription (
         
         # Call enableFeatureOnVmList but don't cast the return value to System.Collections.ArrayList
         # since we've changed it to return a simple array
-        $vmList = enableFeatureOnVmList -VMList $vmList -RetryIfRequired $retryIfRequired -FeatureName $FeatureName -EnableFeature $EnableFeature
+        $vmList = enableFeatureOnVmList -VMList $vmList -RetryIfRequired $retryIfRequired `
+            -FeatureName $FeatureName -EnableFeature $EnableFeature
         
         # Safety check - if $vmList is null, create an empty array
         if ($null -eq $vmList) {
@@ -675,7 +689,8 @@ function enable-FeatureForSubscription (
         }
         
         if (($vmList.Count -eq 0) -or ($retryCount -eq $MAX_RETRIES )) {
-            Write-Progress -Activity "Retrying feature enablement" -Status "100% Complete:" -PercentComplete 100 -CurrentOperation "Retrying" -Completed -Id 2;
+            Write-Progress -Activity "Retrying feature enablement" -Status "100% Complete:" `
+                -PercentComplete 100 -CurrentOperation "Retrying" -Completed -Id 2;
         }
     }
 }
@@ -717,14 +732,16 @@ function enableFeatureOnVmList(
     
     # Show more detailed information about what feature is being configured
     $featureAction = Get-FeatureAction -EnableFeature $EnableFeature -Capitalize $true
-    Write-Progress -Activity "$featureAction feature '$FeatureName'" -Status "0% Complete:" -PercentComplete 0 -CurrentOperation "ConfiguringFeature" -Id 3
+    Write-Progress -Activity "$featureAction feature '$FeatureName'" -Status "0% Complete:" `
+        -PercentComplete 0 -CurrentOperation "ConfiguringFeature" -Id 3
     Write-Verbose "Starting to $($featureAction.ToLower()) feature '$FeatureName' for $numberOfVMs VMs"
 
     foreach ($vm in $VMList) {
         [int]$percent = ($completed * 100) / $numberOfVMs
         $featureAction = Get-FeatureAction -EnableFeature $EnableFeature -Capitalize $true
         $vmInfo = "$($vm.Name) ($($completed+1)/$($VMList.count))"
-        Write-Progress -Activity "$featureAction feature '$FeatureName'" -Status "$percent% Complete:" -PercentComplete $percent -CurrentOperation $vmInfo -Id 3
+        Write-Progress -Activity "$featureAction feature '$FeatureName'" -Status "$percent% Complete:" `
+            -PercentComplete $percent -CurrentOperation $vmInfo -Id 3
         Write-Verbose "Processing VM $vmInfo"
 
         $name = $vm.Name
@@ -747,10 +764,11 @@ function enableFeatureOnVmList(
             if ($PSVersionTable.PSVersion.Major -ge 7) {
                 # PowerShell 7+ supports native command timeouts
                 try {
+                    $settingString = get-SqlFeatureSettingString -FeatureName $FeatureName -EnableFeature $EnableFeature
                     Set-AzVMExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $name `
                                     -Name $extensionName -Publisher $publisher -Type $extensionType `
-                                    -TypeHandlerVersion $typeHandlerVersion -SettingString (get-SqlFeatureSettingString -FeatureName $FeatureName -EnableFeature $EnableFeature) -ErrorAction Stop `
-                                    -TimeoutSec $executionTimeoutSeconds
+                                    -TypeHandlerVersion $typeHandlerVersion -SettingString $settingString `
+                                    -ErrorAction Stop -TimeoutSec $executionTimeoutSeconds
                     
                     $Global:RegisteredVMs.Add($vm) | Out-Null
                     Write-Verbose "Successfully configured feature on VM $($vm.Name)"
@@ -766,15 +784,18 @@ function enableFeatureOnVmList(
             # Fallback to job approach
             $settingstring = get-SqlFeatureSettingString -FeatureName $FeatureName -EnableFeature $EnableFeature
             $jobScript = {
-                param($resourceGroupName, $location, $name, $extensionName, $publisher, $extensionType, $typeHandlerVersion, $settingstring)
+                param($resourceGroupName, $location, $name, $extensionName, $publisher, 
+                      $extensionType, $typeHandlerVersion, $settingstring)
                 
                 Set-AzVMExtension -ResourceGroupName $resourceGroupName -Location $location -VMName $name `
                                  -Name $extensionName -Publisher $publisher -Type $extensionType `
-                                 -TypeHandlerVersion $typeHandlerVersion -SettingString $settingstring -ErrorAction Stop
+                                 -TypeHandlerVersion $typeHandlerVersion -SettingString $settingstring `
+                                 -ErrorAction Stop
             }
             
             # 10 minute timeout (adjust as needed)
-            $job = Start-Job -ScriptBlock $jobScript -ArgumentList $resourceGroupName, $location, $name, $extensionName, $publisher, $extensionType, $typeHandlerVersion, $settingstring
+            $job = Start-Job -ScriptBlock $jobScript -ArgumentList $resourceGroupName, $location, $name, `
+                $extensionName, $publisher, $extensionType, $typeHandlerVersion, $settingstring
             $jobResult = $job | Wait-Job -Timeout 600
             
             if ($jobResult.State -eq 'Completed') {
