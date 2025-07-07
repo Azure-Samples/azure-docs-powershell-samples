@@ -869,8 +869,16 @@ function Get-FeatureAction(
     $Capitalize = $false) {
     
     if ($Capitalize) {
-        return if ($EnableFeature) { "Enabling" } else { "Disabling" }
+        if ($EnableFeature) {
+            return "Enabling"
+        } else {
+            return "Disabling"
+        }
     } else {
-        return if ($EnableFeature) { "enable" } else { "disable" }
+        if ($EnableFeature) { 
+            return "enable"
+        } else {
+            return "disable"
+        }
     }
 }
