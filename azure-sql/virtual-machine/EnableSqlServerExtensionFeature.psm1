@@ -346,12 +346,12 @@ function getListOfVMswithSqlServerExtension(
     # Filter VMs that have the SQL Server extension installed    
     foreach ($vm in $vmList) {
         $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName -VMName $vm.Name
-        if ($extensions | Where-Object {$_.Type -eq "sqliaasagent"}) {
+        if ($extensions | Where-Object -Property ExtensionType -CEQ SqlIaaSAgent) {
             $vmswithextension.Add($vm) | Out-Null
         }
     }
     
-    Write-Verbose "Found $($vmList.Count) VMs in with SQL Server extension installed"
+    Write-Verbose "Found $($vmswithextension.Count) VMs in with SQL Server extension installed"
 
     # Return the ArrayList without wrapping in an array
     return $vmswithextension
@@ -655,7 +655,7 @@ function enable-FeatureForSubscription (
     [string] $Name,
     [string] $FeatureName,
     [bool] $EnableFeature) {
-    $vmList = getVmList -ResourceGroupName $ResourceGroupName -Name $Name
+    $vmList = getListOfVMswithSqlServerExtension -ResourceGroupName $ResourceGroupName -Name $Name
     #update vm count
     $Global:TotalVMs += $vmList.Count
     Write-Verbose "Processing $($vmList.Count) VMs for feature configuration"
@@ -764,7 +764,7 @@ function enableFeatureOnVmList(
                                  -TypeHandlerVersion $typeHandlerVersion -SettingString $settingstring `
                                  -ErrorAction Stop
             }
-            
+
             # 10 minute timeout (adjust as needed)
             $job = Start-Job -ScriptBlock $jobScript -ArgumentList $resourceGroupName, $location, $name, `
                 $extensionName, $publisher, $extensionType, $typeHandlerVersion, $settingstring
