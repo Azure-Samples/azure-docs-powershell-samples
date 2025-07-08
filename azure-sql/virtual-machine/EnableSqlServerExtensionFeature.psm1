@@ -59,7 +59,7 @@
     .PARAMETER FeatureName
     Name of the SQL IaaS extension feature to enable or disable. 
     Example feature names include:
-    - "SqlInstanceInventoryUploadForAzureVM" - Enables inventory upload for SQL VMs
+    - "InventoryUploadOnAzureVM" - Enables inventory upload for SQL VMs
 
     .PARAMETER EnableFeature
     Specify $true to enable the feature or $false to disable the feature
@@ -67,7 +67,7 @@
     .EXAMPLE
     # To enable SQL IaaS extension feature on all VMs in a list of subscriptions
     Enable-SqlServerExtensionFeature -SubscriptionList SubscriptionId1,SubscriptionId2 `
-        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+        -FeatureName "InventoryUploadOnAzureVM" -EnableFeature $true
     -------------------------------------------------------------------------------
     Summary
     -------------------------------------------------------------------------------
@@ -87,7 +87,7 @@
     .EXAMPLE
     # To disable a specific feature on all VMs in a subscription
     Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
-        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $false
+        -FeatureName "InventoryUploadOnAzureVM" -EnableFeature $false
     -------------------------------------------------------------------------------
     Summary
     -------------------------------------------------------------------------------
@@ -125,7 +125,7 @@
     # and multiple resource groups
     Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
         -ResourceGroupList ResourceGroup1,ResourceGroup2 `
-        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+        -FeatureName "InventoryUploadOnAzureVM" -EnableFeature $true
     -------------------------------------------------------------------------------
     Summary
     -------------------------------------------------------------------------------
@@ -143,7 +143,7 @@
     # To enable SQL IaaS extension feature on all VMs in a resource group
     Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
         -ResourceGroupName ResourceGroup1 `
-        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+        -FeatureName "InventoryUploadOnAzureVM" -EnableFeature $true
     -------------------------------------------------------------------------------
     Summary
     -------------------------------------------------------------------------------
@@ -161,7 +161,7 @@
     # To disable a feature on multiple VMs in a single subscription and resource group
     Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
         -ResourceGroupName ResourceGroup1 -VmList VM1,VM2,VM3 `
-        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $false
+        -FeatureName "InventoryUploadOnAzureVM" -EnableFeature $false
     -------------------------------------------------------------------------------
     Summary
     -------------------------------------------------------------------------------
@@ -179,7 +179,7 @@
     # To enable SQL IaaS extension feature on a particular VM
     Enable-SqlServerExtensionFeature -Subscription SubscriptionId1 `
         -ResourceGroupName ResourceGroup1 -Name VM1 `
-        -FeatureName "SqlInstanceInventoryUploadForAzureVM" -EnableFeature $true
+        -FeatureName "InventoryUploadOnAzureVM" -EnableFeature $true
     -------------------------------------------------------------------------------
     Summary
     -------------------------------------------------------------------------------
