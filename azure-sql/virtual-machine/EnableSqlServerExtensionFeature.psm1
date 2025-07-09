@@ -829,22 +829,12 @@ function get-SqlFeatureSettingString(
     [Parameter(Mandatory = $true)]
     [bool]
     $EnableFeature) {
-    
-    # Conditionally include SqlManagement setting only when enabling a feature
-    if ($EnableFeature) {
-        return @"
+    return @"
 {
     "FeatureFlags": [{"Enable":$($EnableFeature.ToString().ToLower()), "Name":"$FeatureName"}],
     "SqlManagement": {"IsEnabled": true}
 }
 "@
-    } else {
-        return @"
-{
-    "FeatureFlags": [{"Enable":$($EnableFeature.ToString().ToLower()), "Name":"$FeatureName"}]
-}
-"@
-    }
 }
 
 <#
