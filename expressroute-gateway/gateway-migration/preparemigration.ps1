@@ -1,6 +1,13 @@
 # Need to verify PS module to ensure have the new API for PUT Gateway
 # Start preparing
 $gatewayUri = Read-Host "Prepare Migration: Please Enter Gateway Resource ID"
+$gatewayUri = $gatewayUri.Trim()
+
+if (-not $gatewayUri) {
+    Write-Error "Gateway Resource ID can not be null."
+    exit
+}
+
 $subIdRegex = "subscriptions/"
 $resourceGroupRegex = "resourceGroups/"
 $vnetRegex = "virtualNetworks/"
@@ -10,9 +17,14 @@ Connect-AzAccount -WarningAction Ignore | Out-Null
 Select-AzSubscription -Subscription $subId -Force -WarningAction Ignore | Out-null
 Write-Host "Getting existing resources for gateway:" $gatewayUri
 $gateway = Get-AzResource -ResourceId $gatewayUri -WarningAction Ignore
+
+if (-not $gateway) {
+    Write-Error "The Gateway introduced is not valid."
+    exit
+}
+
 $resourceGroup = $gateway.ResourceGroupName
 $location = $gateway.Location
-$pip = Get-AzResource -ResourceId $gateway.Properties.ipConfigurations[0].properties.publicIPAddress.id
 $subnet = Get-AzResource -ResourceId $gateway.Properties.ipConfigurations[0].properties.subnet.id
 $vnetName = $subnet.ParentResource.Substring($subnet.ParentResource.ToLower().IndexOf($vnetRegex.ToLower()) + $vnetRegex.Length, $subnet.ParentResource.Length - $subnet.ParentResource.ToLower().IndexOf($vnetRegex.ToLower()) - $vnetRegex.Length)
 $vnet = Get-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resourceGroup
@@ -39,14 +51,16 @@ foreach($connection in $connections)
 Write-Host "---------------- All validation passed, start creating new resources ----------------"
 # Getting input from customer and create new resources
 $prefix = Read-Host "Please choose the suffix for new resources, new resource name will be existingresourcename_<suffix>"
-$pipName = $pip.Name + "_" + $prefix
 $ipconfigName = $gateway.Properties.ipConfigurations[0].name + "_" + $prefix
 $gatewayName = $gateway.Name + "_" + $prefix
-$zone = Read-Host "Please select zones for new gateway, if region do not have zones, please select null"
-$gatewaySku = Read-Host "Please choose the sku for new gateway [ErGw1AZ|ErGw2AZ|ErGw3AZ], if region do not have zones [Standard|HighPerformance|UltraPerformance]"
-if($pipName.Length -gt 80)
-{
-    $pipName = $pipName.Substring(0,80)
+$validSkus = @("ErGw1AZ", "ErGw2AZ", "ErGw3AZ", "Standard", "HighPerformance", "UltraPerformance", "ErGwScale")
+
+$gatewaySku = Read-Host "Please choose the sku for new gateway [ErGw1AZ|ErGw2AZ|ErGw3AZ|ErGwScale], if region do not have zones [Standard|HighPerformance|UltraPerformance]"
+
+if ($validSkus -notcontains $gatewaySku) {
+    Write-Host "Invalid SKU. Valid values are: ErGw1AZ, ErGw2AZ, ErGw3AZ, ErGwScale, Standard, HighPerformance, UltraPerformance"
+    Read-Host "Enter anything to exit, Prepare for migration failed"
+    exit
 }
 if($ipconfigName.Length -gt 80)
 {
@@ -56,29 +70,85 @@ if($gatewayName.Length -gt 80)
 {
     $gatewayName = $gatewayName.Substring(0,80)
 }
-if($zone -eq "null")
-{
-    Write-Host "Region do not support zones"
-    $zone = $null
-}
-$pipNew = New-AzPublicIpAddress -Name $pipName -ResourceGroupName $resourceGroup -Location $location -AllocationMethod Static -Sku Standard -Zone $zone -Force
 $subnetNew = Get-AzVirtualNetworkSubnetConfig -Name GatewaySubnet -VirtualNetwork $vnet
-$ipconfNew = New-AzVirtualNetworkGatewayIpConfig -Name $ipconfigName -Subnet $subnetNew -PublicIpAddress $pipNew
+
+$pipCreate = Read-Host "Please enter Y if you wish to create a Public IP for the new gateway"
+if($pipCreate.ToLower() -ne "y")
+{
+    $ipconfNew = New-AzVirtualNetworkGatewayIpConfig -Name $ipconfigName -Subnet $subnetNew
+} else {
+    if(-not $gateway.Properties.ipConfigurations[0].properties.PublicIpAddress){
+        $pipName = $gateway.Name + "-pip_" + $prefix
+    } else {
+        $pip = Get-AzResource -ResourceId $gateway.Properties.ipConfigurations[0].properties.PublicIpAddress.Id
+        $pipName = $pip.Name + "_" + $prefix
+    }
+    if($pipName.Length -gt 80)
+    {
+        $pipName = $pipName.Substring(0,80)
+    }
+    $zone = Read-Host "Please enter zones for the Public IP, if region does not have zones, please enter null"
+    if($zone -eq "null")
+    {
+        Write-Host "Region do not support zones"
+        $zone = $null
+    } else {
+        $zone = $zone.Split(",")
+    }
+    $pipNew = New-AzPublicIpAddress -Name $pipName -ResourceGroupName $resourceGroup -Location $location -AllocationMethod Static -Sku Standard -Zone $zone -Force
+    $ipconfNew = New-AzVirtualNetworkGatewayIpConfig -Name $ipconfigName -Subnet $subnetNew -PublicIpAddress $pipNew
+}
 $startTime = Get-Date
-Write-Host "---------------- Creating new gateway" $gatewayName "Sku" $gatewaySku "----------------"
-New-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup -Location $location -IpConfigurations $ipconfNew -GatewayType Expressroute -GatewaySku $gatewaysku -AdminState Disabled -Force | Out-null
+
+# If "ErGwScale" SKU is selected, ask for scale units
+if ($gatewaySku -eq "ErGwScale") {
+    $minScaleUnit = [int](Read-Host "Please enter the minimum scale unit for the gateway")
+    $maxScaleUnit = [int](Read-Host "Please enter the maximum scale unit for the gateway")
+
+    if ($minScaleUnit -lt 1 -or $maxScaleUnit -gt 40) {
+        Write-Host "Valid range for scale units is 1 to 40"
+        exit
+    }
+    if ($minScaleUnit -gt $maxScaleUnit) {
+        Write-Host "Error: Minimum scale unit must be less than or equal to the maximum scale unit."
+        exit
+    }
+    Write-Host "---------------- Creating new gateway $gatewayName with ErGwScale SKU ----------------"
+    New-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup -Location $location -IpConfigurations $ipconfNew -GatewayType Expressroute -GatewaySku $gatewaySku -AdminState Disabled -MinScaleUnit $minScaleUnit -MaxScaleUnit $maxScaleUnit -Force | Out-Null
+}
+else {
+    Write-Host "---------------- Creating new gateway $gatewayName with $gatewaySku SKU ----------------"
+    New-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup -Location $location -IpConfigurations $ipconfNew -GatewayType Expressroute -GatewaySku $gatewaySku -AdminState Disabled -Force | Out-Null
+}
+
 $gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
 Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayNew -AllowRemoteVnetTraffic $gateway.AllowRemoteVnetTraffic -AllowVirtualWanTraffic $gateway.AllowVirtualWanTraffic
 $gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
 if($gatewayNew.ProvisioningState -ne "Succeeded")
 {
-    Write-Host $gatewayNew.Name " is " $gateway.ProvisioningState
+    Write-Host $gatewayNew.Name " is " $gatewayNew.ProvisioningState
     Read-Host "Enter anything to exit, Prepare for migration failed"
     exit
 }
-Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayNew -AllowRemoteVnetTraffic $true -AllowVirtualWanTraffic $true
+
+$existingGatewayName = $gateway.Name
+Write-Host "---------------- Attempting to update existing gateway $existingGatewayName if it has legacy connections. ----------------"
+$gatewayExisting = get-AzVirtualNetworkGateway -Name $existingGatewayName -ResourceGroupName $resourceGroup
+Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayExisting
+if($gatewayExisting.ProvisioningState -ne "Succeeded")
+{
+    Write-Host $gatewayExisting.Name " is " $gatewayExisting.ProvisioningState
+    Read-Host "Enter anything to exit, Prepare for migration failed while converting existing gateway to new encapsulation type"
+    exit
+}
+else {
+     Write-Host $existingGatewayName " is " $gatewayExisting.ProvisioningState
+     Write-Host "---------------- Update of old gateway is successful! ----------------"
+}
+
+# Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayNew -AllowRemoteVnetTraffic $true -AllowVirtualWanTraffic $true
 $gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
-Write-Host New gateway properties: AllowRemoteVnetTraffic $gatewayNew.AllowRemoteVnetTraffic, AllowVirtualWanTraffic $gatewayNew.AllowVirtualWanTraffic
+Write-Host "New gateway properties: AllowRemoteVnetTraffic : "$gatewayNew.AllowRemoteVnetTraffic ", AllowVirtualWanTraffic : " $gatewayNew.AllowVirtualWanTraffic
 foreach($connection in $connections)
 {
     $connName = $connection.Name + "_" + $prefix
@@ -158,6 +228,50 @@ foreach($connection in $connectionsNew)
         exit
     }
 }
+
+# logic to check if maintenance configuration is assigned to old gateway, if yes then create a new assignment for the new gateway using the same maintenance configuration
+
+# Variables
+$oldGatewayName = $gateway.Name
+$newGatewayName = $gatewayNew.Name
+$resourceType = "virtualNetworkGateways"
+$providerName = "Microsoft.Network"
+
+# Check for existing maintenance configuration assignment
+try {
+    $assignments = Get-AzConfigurationAssignment -ResourceGroupName $resourceGroup -ResourceName $oldGatewayName -ProviderName $providerName -ResourceType $resourceType
+} catch {
+    Write-Output "No maintenance configuration assignment found for $oldGatewayName"
+    $assignments = @()
+}
+
+if ($assignment -ne $null -and $assignments.Count -gt 0) {
+    foreach ($assignment in $assignments) {
+        $maintenanceConfigId = $assignment.MaintenanceConfigurationId
+
+        # Parse Maintenance Configuration ID to get the config name
+        $parsed = $maintenanceConfigId -split "/"
+        $maintenanceConfigName = $parsed[-1]
+
+        # Retrieve the configuration object
+        $config = Get-AzMaintenanceConfiguration -ResourceGroupName $resourceGroup -Name $maintenanceConfigName
+
+        # Assign the configuration to the new gateway
+        New-AzConfigurationAssignment `
+            -ResourceGroupName $resourceGroup `
+            -ResourceName $newGatewayName `
+            -Location $config.Location `
+            -ResourceType $resourceType `
+            -ProviderName $providerName `
+            -ConfigurationAssignmentName $config.Name `
+            -MaintenanceConfigurationId $maintenanceConfigId
+
+        Write-Output "Assigned maintenance configuration '$maintenanceConfigName' to '$newGatewayName'"
+    }
+} else {
+    Write-Output "No configuration assignment exists for $oldGatewayName, so nothing was assigned to $newGatewayName"
+}
+
 $endTime = Get-Date
 $diff = New-TimeSpan -Start $startTime -End $endTime
 # Preparetion completed!
