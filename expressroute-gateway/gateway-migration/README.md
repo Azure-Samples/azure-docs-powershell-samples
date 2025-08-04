@@ -4,8 +4,7 @@
    - AllowDeletionOfIpPrefixFromSubnet
    - AllowMultipleAddressPrefixesOnSubnet
 1. Install the latest PowerShell for Az.Network Module to have the new API to enable/disable gateway
-1. Run `PrepareMigration.ps1`, this script performs validation and create all new resources :
-   gateway and connections
+1. 1. Run PrepareMigration.ps1, this script will do validation and create all new resources : gateway and connections. Please note that Microsoft will auto-assign a Standard Public IP to ExpressRoute Gateway. Creation of Public IP is no longer required. 
 1. Run `Migration.ps1`. This script switches traffic from one gateway to another
 1. Run `CommitMigration.ps1`. This script removes unused resources: disabled gateway and its
    connections
