@@ -1,4 +1,4 @@
-﻿# Need to verify PS module to ensure have the new API for PUT Gateway
+# Need to verify PS module to ensure have the new API for PUT Gateway
 
 
 # Start preparing
@@ -24,7 +24,25 @@ if($gwtEnabled.provisioningState -ne "Succeeded")
           exit
 }
 
-$connections = Get-AzVirtualNetworkGatewayConnection -ResourceGroupName $resourceGroup | Where-Object -FilterScript {$_.VirtualNetworkGateway1.Id -eq $gatewayUriEnabled}
+# Fetch connections referencing the enabled gateway across the subscription
+$argQuery = @"
+Resources
+| where type =~ 'microsoft.network/connections'
+| where properties.virtualNetworkGateway1.id =~ '$gatewayUriEnabled'
+| project name, resourceGroup
+"@
+
+$argResults = Search-AzGraph -Query $argQuery -Subscription $subId -WarningAction Ignore
+$connections = @()
+foreach ($result in $argResults) {
+  try {
+    $conn = Get-AzVirtualNetworkGatewayConnection -Name $result.name -ResourceGroupName $result.resourceGroup -WarningAction Ignore
+    if ($null -ne $conn) { $connections += $conn }
+  } catch {
+    Write-Verbose "Failed to resolve connection $($result.name) in RG $($result.resourceGroup): $($_.Exception.Message)"
+  }
+}
+
 foreach($connection in $connections)
 {
         if($connection.ProvisioningState -ne "Succeeded")
@@ -42,7 +60,25 @@ if($gwtDisabled.provisioningState -ne "Succeeded")
           exit
 }
 
-$connections = Get-AzVirtualNetworkGatewayConnection -ResourceGroupName $resourceGroup | Where-Object -FilterScript {$_.VirtualNetworkGateway1.Id -eq $gatewayUriDisabled}
+# Fetch connections referencing the disabled gateway across the subscription
+$argQuery = @"
+Resources
+| where type =~ 'microsoft.network/connections'
+| where properties.virtualNetworkGateway1.id =~ '$gatewayUriDisabled'
+| project name, resourceGroup
+"@
+
+$argResults = Search-AzGraph -Query $argQuery -Subscription $subId -WarningAction Ignore
+$connections = @()
+foreach ($result in $argResults) {
+  try {
+    $conn = Get-AzVirtualNetworkGatewayConnection -Name $result.name -ResourceGroupName $result.resourceGroup -WarningAction Ignore
+    if ($null -ne $conn) { $connections += $conn }
+  } catch {
+    Write-Verbose "Failed to resolve connection $($result.name) in RG $($result.resourceGroup): $($_.Exception.Message)"
+  }
+}
+
 foreach($connection in $connections)
 {
         if($connection.ProvisioningState -ne "Succeeded")
