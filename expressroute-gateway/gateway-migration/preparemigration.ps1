@@ -36,9 +36,29 @@ if($gateway.Properties.provisioningState -ne "Succeeded")
     Read-Host "Enter anything to exit, Prepare for migration failed"
     exit
 }
-$connections = Get-AzVirtualNetworkGatewayConnection -ResourceGroupName $resourceGroup | Where-Object -FilterScript {
-    $_.VirtualNetworkGateway1.Id -eq $gatewayUri
+
+# Fetch connections referencing this gateway across the subscription via Azure Resource Graph
+# Note: Requires Az.ResourceGraph module
+$argQuery = @"
+Resources
+| where type =~ 'microsoft.network/connections'
+| where properties.virtualNetworkGateway1.id =~ '$gatewayUri'
+| project name, resourceGroup
+"@
+
+$argResults = Search-AzGraph -Query $argQuery -Subscription $subId -WarningAction Ignore
+
+# Resolve full connection objects by name and resource group
+$connections = @()
+foreach ($result in $argResults) {
+    try {
+        $conn = Get-AzVirtualNetworkGatewayConnection -Name $result.name -ResourceGroupName $result.resourceGroup -WarningAction Ignore
+        if ($null -ne $conn) { $connections += $conn }
+    } catch {
+        Write-Verbose "Failed to resolve connection $($result.name) in RG $($result.resourceGroup): $($_.Exception.Message)"
+    }
 }
+
 foreach($connection in $connections)
 {
     if($connection.ProvisioningState -ne "Succeeded")
@@ -62,6 +82,7 @@ if ($validSkus -notcontains $gatewaySku) {
     Read-Host "Enter anything to exit, Prepare for migration failed"
     exit
 }
+
 if($ipconfigName.Length -gt 80)
 {
     $ipconfigName = $ipconfigName.Substring(0,80)
@@ -100,6 +121,9 @@ if($pipCreate.ToLower() -ne "y")
 }
 $startTime = Get-Date
 
+$existingGatewayName = $gateway.Name
+$gatewayExisting = get-AzVirtualNetworkGateway -Name $existingGatewayName -ResourceGroupName $resourceGroup
+
 # If "ErGwScale" SKU is selected, ask for scale units
 if ($gatewaySku -eq "ErGwScale") {
     $minScaleUnit = [int](Read-Host "Please enter the minimum scale unit for the gateway")
@@ -113,16 +137,47 @@ if ($gatewaySku -eq "ErGwScale") {
         Write-Host "Error: Minimum scale unit must be less than or equal to the maximum scale unit."
         exit
     }
-    Write-Host "---------------- Creating new gateway $gatewayName with ErGwScale SKU ----------------"
-    New-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup -Location $location -IpConfigurations $ipconfNew -GatewayType Expressroute -GatewaySku $gatewaySku -AdminState Disabled -MinScaleUnit $minScaleUnit -MaxScaleUnit $maxScaleUnit -Force | Out-Null
-}
-else {
-    Write-Host "---------------- Creating new gateway $gatewayName with $gatewaySku SKU ----------------"
-    New-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup -Location $location -IpConfigurations $ipconfNew -GatewayType Expressroute -GatewaySku $gatewaySku -AdminState Disabled -Force | Out-Null
 }
 
-$gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
-Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayNew -AllowRemoteVnetTraffic $gateway.AllowRemoteVnetTraffic -AllowVirtualWanTraffic $gateway.AllowVirtualWanTraffic
+$ipConfigProps = @{
+    subnet = @{ id = $ipconfNew.Subnet.Id } 
+    privateIPAllocationMethod = 'Dynamic'
+}
+if ($null -ne $ipconfNew.PublicIpAddress) {
+    $ipConfigProps.publicIpAddress = @{ id = $ipconfNew.PublicIpAddress.Id }
+}
+
+$resourceProps = @{
+    gatewayType = 'ExpressRoute'
+    ipConfigurations = @(@{
+        name = $ipconfNew.Name
+        properties = $ipConfigProps
+    })
+    sku = @{ name = "$gatewaySku"; tier = "$gatewaySku" }
+    adminState = 'Disabled'
+    allowRemoteVnetTraffic = $gatewayExisting.AllowRemoteVnetTraffic
+    allowVirtualWanTraffic = $gatewayExisting.AllowVirtualWanTraffic
+}
+
+if ($gatewaySku -eq "ErGwScale") {
+    $resourceProps.autoscaleConfiguration = @{ bounds = @{ min = $minScaleUnit; max = $maxScaleUnit } }
+}
+
+$template = @{
+    '$schema' = 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#'
+    contentVersion = '1.0.0.0'
+    resources = @(@{
+        type = 'Microsoft.Network/virtualNetworkGateways'
+        apiVersion = '2024-07-01'
+        name = $gatewayName
+        location = $location
+        properties = $resourceProps
+    })
+}
+
+Write-Host "---------------- Creating new gateway $gatewayName with $gatewaySku SKU ----------------"
+New-AzResourceGroupDeployment -ResourceGroupName $resourceGroup -TemplateObject $template -Force | Out-Null
+
 $gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
 if($gatewayNew.ProvisioningState -ne "Succeeded")
 {
@@ -131,9 +186,7 @@ if($gatewayNew.ProvisioningState -ne "Succeeded")
     exit
 }
 
-$existingGatewayName = $gateway.Name
 Write-Host "---------------- Attempting to update existing gateway $existingGatewayName if it has legacy connections. ----------------"
-$gatewayExisting = get-AzVirtualNetworkGateway -Name $existingGatewayName -ResourceGroupName $resourceGroup
 Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayExisting
 if($gatewayExisting.ProvisioningState -ne "Succeeded")
 {
@@ -146,9 +199,6 @@ else {
      Write-Host "---------------- Update of old gateway is successful! ----------------"
 }
 
-# Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayNew -AllowRemoteVnetTraffic $true -AllowVirtualWanTraffic $true
-$gatewayNew = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $resourceGroup
-Write-Host "New gateway properties: AllowRemoteVnetTraffic : "$gatewayNew.AllowRemoteVnetTraffic ", AllowVirtualWanTraffic : " $gatewayNew.AllowVirtualWanTraffic
 foreach($connection in $connections)
 {
     $connName = $connection.Name + "_" + $prefix
