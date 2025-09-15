@@ -186,19 +186,6 @@ if($gatewayNew.ProvisioningState -ne "Succeeded")
     exit
 }
 
-Write-Host "---------------- Attempting to update existing gateway $existingGatewayName if it has legacy connections. ----------------"
-Set-AzVirtualNetworkGateway -VirtualNetworkGateway $gatewayExisting
-if($gatewayExisting.ProvisioningState -ne "Succeeded")
-{
-    Write-Host $gatewayExisting.Name " is " $gatewayExisting.ProvisioningState
-    Read-Host "Enter anything to exit, Prepare for migration failed while converting existing gateway to new encapsulation type"
-    exit
-}
-else {
-     Write-Host $existingGatewayName " is " $gatewayExisting.ProvisioningState
-     Write-Host "---------------- Update of old gateway is successful! ----------------"
-}
-
 foreach($connection in $connections)
 {
     $connName = $connection.Name + "_" + $prefix
