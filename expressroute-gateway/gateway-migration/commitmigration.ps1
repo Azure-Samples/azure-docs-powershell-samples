@@ -1,4 +1,4 @@
-﻿# Start preparing
+# Start preparing
 $gatewayUri = Read-Host "Commit Migration: Please Enter Gateway Resource ID"
 $subIdRegex = "subscriptions/"
 $resourceGroupRegex = "resourceGroups/"
@@ -37,7 +37,26 @@ if($confirm.ToLower() -ne "y")
 
 # Getting input from customer and delete resources
 $startTime = Get-Date
-$connections = Get-AzVirtualNetworkGatewayConnection -ResourceGroupName $gateway.ResourceGroupName | Where-Object -FilterScript {$_.VirtualNetworkGateway1.Id -eq $gatewayToDelete}
+
+# Fetch connections referencing gateway to be deleted across the subscription
+$argQuery = @"
+Resources
+| where type =~ 'microsoft.network/connections'
+| where properties.virtualNetworkGateway1.id =~ '$gatewayToDelete'
+| project name, resourceGroup
+"@
+
+$argResults = Search-AzGraph -Query $argQuery -Subscription $subId -WarningAction Ignore
+$connections = @()
+foreach ($result in $argResults) {
+    try {
+        $conn = Get-AzVirtualNetworkGatewayConnection -Name $result.name -ResourceGroupName $result.resourceGroup -WarningAction Ignore
+        if ($null -ne $conn) { $connections += $conn }
+    } catch {
+        Write-Verbose "Failed to resolve connection $($result.name) in RG $($result.resourceGroup): $($_.Exception.Message)"
+    }
+}
+
 foreach($connection in $connections)
 {
         if($connection.ProvisioningState -ne "Succeeded")
