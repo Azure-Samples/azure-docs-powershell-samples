@@ -15,7 +15,7 @@ $resourceGroup  = Read-Host "Enter the Resource Group name"
 $accountName    = Read-Host "Enter the Cosmos DB account name"
 
 # Prompt whether to export the role definition to JSON (interactive)
-$saveJsonAnswer = Read-Host "Export the role definition to JSON in the current directory? (optional) [y/N]"
+$saveJsonAnswer = Read-Host "Save role definition to JSON in the current directory (optional)? [y/N]"
 $ExportRoleToJson = $saveJsonAnswer.Trim().ToLower() -in @('y','yes')
 
 # ---- Pre-flight checks ----
@@ -227,5 +227,3 @@ Principal Id                 : $principalId
 $jsonFileLine
 ✅ Cosmos Mirroring RBAC Role assigned successfully!
 ========================================
-
-"@
