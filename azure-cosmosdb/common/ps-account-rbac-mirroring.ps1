@@ -227,3 +227,4 @@ Principal Id                 : $principalId
 $jsonFileLine
 ✅ Cosmos Mirroring RBAC Role assigned successfully!
 ========================================
+"@

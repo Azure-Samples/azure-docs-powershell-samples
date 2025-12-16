@@ -1,7 +1,7 @@
 # Requires: 
 # - Az PowerShell modules (Az.Accounts, Az.Resources, Az.CosmosDB)
 # - Interactive sign-in via Connect-AzAccount
-# - Subscription Owner or Cosmos DB Account Contributor permissions
+# - Subscription Owner or Cosmos DB Account Contributor permissions (will assign it if needed)
 # - Fabric Workspace Admin role for the target workspace
 # - Access to Microsoft Graph API and Fabric API (https://api.fabric.microsoft.com)
 # --------------------------------------------------
