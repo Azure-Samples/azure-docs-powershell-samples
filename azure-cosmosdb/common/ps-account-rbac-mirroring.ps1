@@ -1,5 +1,4 @@
 # Requires: Az PowerShell modules (Az.Accounts, Az.Resources, Az.CosmosDB) and an interactive sign-in via Connect-AzAccount
-
 # --------------------------------------------------
 # Purpose
 # Create a custom role definition in an Azure Cosmos DB account with readMetadata and readAnalytics permissions, and assign it to the current signed-in user.
@@ -11,12 +10,12 @@ param(
 )
 
 # Variables - ***** SUBSTITUTE YOUR VALUES *****
-$accountName    = Read-Host "Enter the Cosmos DB account name"
 $subscriptionId = Read-Host "Enter the Azure Subscription ID"
 $resourceGroup  = Read-Host "Enter the Resource Group name"
+$accountName    = Read-Host "Enter the Cosmos DB account name"
 
 # Prompt whether to export the role definition to JSON (interactive)
-$saveJsonAnswer = Read-Host "Save role definition to JSON in the current directory? [y/N]"
+$saveJsonAnswer = Read-Host "Export the role definition to JSON in the current directory? (optional) [y/N]"
 $ExportRoleToJson = $saveJsonAnswer.Trim().ToLower() -in @('y','yes')
 
 # ---- Pre-flight checks ----
@@ -209,15 +208,24 @@ if ($existingAssignment) {
     }
 }
 
-Write-Host ""
-Write-Host "Summary"
-Write-Host "-------"
-Write-Host "Subscription : $subscriptionId"
-Write-Host "ResourceGroup: $resourceGroup"
-Write-Host "Account      : $accountName"
-Write-Host "Scope        : $scope"
-Write-Host "Role Name    : $roleName"
-Write-Host "Role Id (GUID): $roleGuid"
-Write-Host "Role Full Id : $roleFullId"
-Write-Host "Principal Id : $principalId"
-if ($ExportRoleToJson) { Write-Host "JSON File    : $exportedJsonPath" }
+# ---- Summary ----
+$jsonFileLine = if ($ExportRoleToJson) { "JSON File                    : $exportedJsonPath`n" } else { "" }
+
+Write-Host @"
+
+========================================
+Summary
+========================================
+Subscription                 : $subscriptionId
+Resource Group               : $resourceGroup
+Cosmos DB Account            : $accountName
+Scope                        : $scope
+Role Name                    : $roleName
+Role Id (GUID)               : $roleGuid
+Role Full Id                 : $roleFullId
+Principal Id                 : $principalId
+$jsonFileLine
+✅ Cosmos Mirroring RBAC Role assigned successfully!
+========================================
+
+"@
