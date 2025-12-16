@@ -79,7 +79,7 @@ Operations to be Performed
 Step 1: Create/Assign RBAC Roles for Mirroring
         - Create custom Cosmos DB role with readMetadata and readAnalytics permissions
         - Create built-in Data Contributor role assignment
-        - Assign roles to current user for Fabric mirroring access
+        - Assign roles to current user for Fabric mirroring access.
 
 Step 2: Temporarily enable public access and configure IP Firewall
         - Download Azure service tags for DataFactory and PowerQueryOnline
