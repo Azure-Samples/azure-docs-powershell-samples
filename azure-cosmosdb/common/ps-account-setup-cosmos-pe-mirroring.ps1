@@ -1,7 +1,7 @@
 # Requires: 
 # - Az PowerShell modules (Az.Accounts, Az.Resources, Az.CosmosDB)
 # - Interactive sign-in via Connect-AzAccount
-# - Subscription Owner or Cosmos DB Account Contributor permissions
+# - Subscription Owner or Cosmos DB Account Contributor permissions (will assign it if needed)
 # - Fabric Workspace Admin role for the target workspace
 # - Access to Microsoft Graph API and Fabric API (https://api.fabric.microsoft.com)
 # --------------------------------------------------
@@ -78,7 +78,8 @@ Operations to be Performed
 
 Step 1: Create/Assign RBAC Roles for Mirroring
         - Create custom Cosmos DB role with readMetadata and readAnalytics permissions
-        - Assign role to current user for Fabric mirroring access
+        - Create built-in Data Contributor role assignment
+        - Assign roles to current user for Fabric mirroring access.
 
 Step 2: Temporarily enable public access and configure IP Firewall
         - Download Azure service tags for DataFactory and PowerQueryOnline
@@ -210,15 +211,19 @@ if ($proceedStep1.Trim().ToLower() -in @('n','no')) {
         
         Write-Host "Current user object id: $principalId"
         
-        # Check for existing assignment
-        Write-Host "Checking for existing role assignment..."
-        $existingAssignment = Get-AzCosmosDBSqlRoleAssignment -ResourceGroupName $resourceGroup -AccountName $accountName -ErrorAction Stop |
+        # ─────────────────────────────────────────────────────────────────
+        # 1A: Assign Custom Metadata/Analytics Reader Role
+        # ─────────────────────────────────────────────────────────────────
+        
+        Write-Host ""
+        Write-Host "Checking for existing custom role assignment..."
+        $existingCustomAssignment = Get-AzCosmosDBSqlRoleAssignment -ResourceGroupName $resourceGroup -AccountName $accountName -ErrorAction Stop |
                                 Where-Object { ($_.PrincipalId -eq $principalId) -and ($_.Scope -eq $scope) -and ($_.RoleDefinitionId -like "*${roleGuid}*") } | Select-Object -First 1
         
-        if ($existingAssignment) {
-            Write-Host "Role assignment already exists (Assignment Id: $($existingAssignment.Id))."
+        if ($existingCustomAssignment) {
+            Write-Host "✓ Custom role assignment already exists (Assignment Id: $($existingCustomAssignment.Id))."
         } else {
-            Write-Host "Creating role assignment for principal $principalId..."
+            Write-Host "→ Assigning custom metadata/analytics reader role to user..."
             $assignment = New-AzCosmosDBSqlRoleAssignment `
                 -ResourceGroupName $resourceGroup `
                 -AccountName $accountName `
@@ -226,11 +231,35 @@ if ($proceedStep1.Trim().ToLower() -in @('n','no')) {
                 -PrincipalId $principalId `
                 -Scope $scope -ErrorAction Stop
             
-            Write-Host "Role assigned successfully. Assignment Id: $($assignment.Id)"
+            Write-Host "✓ Custom role assigned successfully. Assignment Id: $($assignment.Id)"
+        }
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 1B: Assign Built-in Data Contributor Role
+        # ─────────────────────────────────────────────────────────────────
+        
+        Write-Host ""
+        Write-Host "Checking for existing Data Contributor role assignment..."
+        $dataContributorRoleId = "00000000-0000-0000-0000-000000000002"
+        $existingDataContributorAssignment = Get-AzCosmosDBSqlRoleAssignment -ResourceGroupName $resourceGroup -AccountName $accountName -ErrorAction Stop |
+                                              Where-Object { ($_.PrincipalId -eq $principalId) -and ($_.Scope -eq $scope) -and ($_.RoleDefinitionId -like "*${dataContributorRoleId}*") } | Select-Object -First 1
+        
+        if ($existingDataContributorAssignment) {
+            Write-Host "✓ Data Contributor role assignment already exists (Assignment Id: $($existingDataContributorAssignment.Id))."
+        } else {
+            Write-Host "→ Assigning built-in Data Contributor role to user..."
+            $dataContributorAssignment = New-AzCosmosDBSqlRoleAssignment `
+                -ResourceGroupName $resourceGroup `
+                -AccountName $accountName `
+                -RoleDefinitionId $dataContributorRoleId `
+                -PrincipalId $principalId `
+                -Scope $scope -ErrorAction Stop
+            
+            Write-Host "✓ Data Contributor role assigned successfully. Assignment Id: $($dataContributorAssignment.Id)"
         }
         
         Write-Host ""
-        Write-Host "✅ Step 1: RBAC Role Created/Assigned Successfully" -ForegroundColor Green
+        Write-Host "✅ Step 1: RBAC Roles Created/Assigned Successfully" -ForegroundColor Green
         $completedSteps += "✅ RBAC Role Configuration"
         
     } catch {
