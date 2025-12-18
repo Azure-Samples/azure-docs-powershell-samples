@@ -754,6 +754,18 @@ foreach ($step in $completedSteps) {
 }
 
 Write-Host ""
+
+# Get fresh account state for final summary
+Write-Host "Retrieving final account state..." -ForegroundColor Gray
+try {
+    $finalAccount = Get-AzCosmosDBAccount -ResourceGroupName $resourceGroup -Name $accountName -ErrorAction Stop
+    $finalPublicAccess = $finalAccount.PublicNetworkAccess
+    $finalIpRulesCount = if ($finalAccount.IpRules) { $finalAccount.IpRules.Count } else { 0 }
+} catch {
+    $finalPublicAccess = "Unknown"
+    $finalIpRulesCount = "Unknown"
+}
+
 Write-Host @"
 ═══════════════════════════════════════════════════════════════
 Configuration Summary
@@ -764,9 +776,9 @@ Cosmos DB Account            : $accountName
 Region                       : $region
 Fabric Workspace             : $workspaceName
 Initial Public Access        : $initialPublicNetworkAccess
-Current Public Access        : $(try { (Get-AzCosmosDBAccount -ResourceGroupName $resourceGroup -Name $accountName).PublicNetworkAccess } catch { "Unknown" })
+Current Public Access        : $finalPublicAccess
 Initial IP Firewall Rules    : $($initialIpRules.Count)
-Current IP Firewall Rules    : $(try { (Get-AzCosmosDBAccount -ResourceGroupName $resourceGroup -Name $accountName).IpRules.Count } catch { "Unknown" })
+Current IP Firewall Rules    : $finalIpRulesCount
 
 🎉 Your Cosmos DB account is now configured for Fabric Mirroring!
 ═══════════════════════════════════════════════════════════════
