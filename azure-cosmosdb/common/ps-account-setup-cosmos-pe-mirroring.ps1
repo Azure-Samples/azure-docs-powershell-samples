@@ -611,7 +611,7 @@ Please complete the following steps in Microsoft Fabric:
    - Click '+ New' → 'Mirrored Database'
    - Select 'Azure Cosmos DB'
 3. Configure the connection:
-   - Select your Cosmos DB account: https://'$accountName'.documents.azure.com:443/
+   - Select your Cosmos DB account: https://$accountName.documents.azure.com:443/
    - Authenticate using Organizational Account (your current user)
    - Configure the remaining mirroring settings as needed
 4. Complete the setup wizard and start mirroring
