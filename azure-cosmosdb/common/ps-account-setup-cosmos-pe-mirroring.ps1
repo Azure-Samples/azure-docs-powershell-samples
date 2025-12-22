@@ -1,13 +1,68 @@
-# Requires: 
-# - Az PowerShell modules (Az.Accounts, Az.Resources, Az.CosmosDB)
+# ==================================================================================
+# Azure Cosmos DB - Configure Mirroring for Private Endpoints or Virtual Networking
+# ==================================================================================
+#
+# PURPOSE:
+# Interactive script to configure Azure Cosmos DB accounts with private endpoints 
+# for Microsoft Fabric Mirroring. Automates RBAC setup, temporary network access 
+# configuration, and Network ACL bypass for Fabric workspaces.
+#
+# WHAT THIS SCRIPT DOES:
+# Step 1: Creates custom RBAC role (readMetadata/readAnalytics) and assigns 
+#         Data Contributor role to current user
+# Step 2: Temporarily enables public access and adds DataFactory/PowerQueryOnline 
+#         service tag IPs to firewall (merges with existing IPs)
+# Step 3: Enables Fabric Network ACL Bypass capability and configures workspace 
+#         resource ID for bypass
+# Step 4: Prompts user to manually create Fabric mirror in portal
+# Step 5: Restores original network settings (public access state and IP rules)
+#
+# WHAT PERSISTS AFTER COMPLETION:
+# ✓ RBAC role definitions and assignments (custom + Data Contributor)
+# ✓ Network ACL Bypass capability (EnableFabricNetworkAclBypass)
+# ✓ Network ACL Bypass resource ID (Fabric workspace)
+# ✓ Original public network access state
+# ✓ Original IP firewall rules (if any existed)
+#
+# IDEMPOTENCY:
+# ✓ Safe to run multiple times on the same account
+# ✓ Skips creating roles/assignments that already exist
+# ✓ Merges new IPs with existing ones (no duplicates)
+# ✓ Preserves existing Network ACL bypass configurations
+# ✓ Restores original network state at completion
+#
+# REQUIREMENTS:
+# - Az PowerShell modules: Az.Accounts, Az.Resources, Az.CosmosDB
 # - Interactive sign-in via Connect-AzAccount
 # - Subscription Owner or Cosmos DB Account Contributor permissions (will assign it if needed)
 # - Fabric Workspace Admin role for the target workspace
 # - Access to Microsoft Graph API and Fabric API (https://api.fabric.microsoft.com)
-# --------------------------------------------------
-# Purpose
-# Comprehensive script to configure Azure Cosmos DB with private endpoints for Microsoft Fabric Mirroring
-# This script combines RBAC setup, IP firewall configuration, and network ACL bypass setup
+#
+# PREREQUISITES:
+# - Cosmos DB account must have private endpoints configured
+# - Fabric Capacity must be in same region as Cosmos DB account's primary (hub) region
+# - User must be admin of target Fabric workspace
+#
+# USAGE:
+# .\ps-account-setup-cosmos-pe-mirroring.ps1
+# 
+# The script will interactively prompt for:
+# - Azure Subscription ID
+# - Resource Group name
+# - Cosmos DB account name
+# - Fabric Capacity Azure region (must match Cosmos DB hub region)
+# - Fabric Workspace name
+#
+# Each step can be optionally skipped for granular control.
+#
+# NOTES:
+# - Step 2 may take up to 15 minutes to propagate IP firewall rules
+# - Temporarily enables public access during setup (Step 2-4)
+# - Returns network settings to original state in Step 5
+# - Service tag IPs are region-specific and automatically downloaded
+# - Script captures initial state and preserves user's custom IP rules
+#
+# ==============================================================================
 
 # Set strict mode for better error handling
 $ErrorActionPreference = "Stop"
@@ -15,10 +70,12 @@ $ErrorActionPreference = "Stop"
 Write-Host @"
 
 ╔════════════════════════════════════════════════════════════════╗
-║   Azure Cosmos DB - Configure Mirroring with Private Endpoints ║
+║   Azure Cosmos DB - Configure Mirroring with                   ║
+║       Private Endpoints or Virtual Networking                  ║
 ╚════════════════════════════════════════════════════════════════╝
 
-This script will configure your Cosmos DB account with private endpoints for Fabric Mirroring.
+This script will configure your Cosmos DB account for Fabric Mirroring that are 
+configured with private endpoints or virtual networking.
 
 "@ -ForegroundColor Cyan
 
@@ -29,7 +86,7 @@ Write-Host ""
 $subscriptionId = Read-Host "Enter the Azure Subscription ID"
 $resourceGroup = Read-Host "Enter the Resource Group name"
 $accountName = Read-Host "Enter the Cosmos DB account name"
-$region = Read-Host "Enter the Azure region (e.g., westcentralus, eastus)"
+$region = Read-Host "Enter the Azure region of your Fabric Capacity and Cosmos Account (e.g., westus, eastus)"
 $workspaceName = Read-Host "Enter the Fabric Workspace name"
 
 Write-Host ""
@@ -79,12 +136,12 @@ Operations to be Performed
 Step 1: Create/Assign RBAC Roles for Mirroring
         - Create custom Cosmos DB role with readMetadata and readAnalytics permissions
         - Create built-in Data Contributor role assignment
-        - Assign roles to current user for Fabric mirroring access.
+        - Assign both roles to current user for Fabric mirroring access.
 
 Step 2: Temporarily enable public access and configure IP Firewall
         - Download Azure service tags for DataFactory and PowerQueryOnline
         - Filter IPv4 addresses for the specified region
-        - Enable public network access (temporarily for setup)
+        - Enable public network access if needed (temporarily for setup)
         - Update Cosmos DB IP firewall rules
         ⏱️  Note: May take up to 15 minutes to propagate
 
@@ -118,11 +175,25 @@ Write-Host ""
 # Track completed steps
 $completedSteps = @()
 
-# Capture initial public network access state
+# Capture initial public network access state and IP rules
 Write-Host "Capturing current Cosmos DB configuration..."
 $initialAccount = Get-AzCosmosDBAccount -ResourceGroupName $resourceGroup -Name $accountName
 $initialPublicNetworkAccess = $initialAccount.PublicNetworkAccess
+
+# Capture initial IP firewall rules
+$initialIpRules = @()
+if ($initialAccount.IpRules) {
+    foreach ($ipRule in $initialAccount.IpRules) {
+        if ($ipRule -is [string]) {
+            $initialIpRules += $ipRule
+        } elseif ($ipRule.IpAddressOrRange) {
+            $initialIpRules += $ipRule.IpAddressOrRange
+        }
+    }
+}
+
 Write-Host "Current Public Network Access: $initialPublicNetworkAccess"
+Write-Host "Current IP Firewall Rules: $($initialIpRules.Count) rules"
 Write-Host ""
 
 # ═══════════════════════════════════════════════════════════════
@@ -347,6 +418,24 @@ if ($proceedStep2.Trim().ToLower() -in @('n','no')) {
         $ipv4Count = $ipv4OnlyIPs.Count
         Write-Host "IPv4 addresses: $ipv4Count"
         
+        # Merge with existing IP rules to preserve user's custom rules
+        Write-Host "Checking for existing IP firewall rules..."
+        if ($initialIpRules -and $initialIpRules.Count -gt 0) {
+            Write-Host "Found $($initialIpRules.Count) existing IP rules"
+        }
+        
+        # Merge service tag IPs with existing IPs, avoiding duplicates
+        $mergedIpRules = @($initialIpRules)
+        $addedCount = 0
+        foreach ($ip in $ipv4OnlyIPs) {
+            if ($mergedIpRules -notcontains $ip) {
+                $mergedIpRules += $ip
+                $addedCount++
+            }
+        }
+        
+        Write-Host "Total IP rules after merge: $($mergedIpRules.Count) ($addedCount new)"
+        
         Write-Host "Enabling public network access and configuring IP firewall rules..."
         Write-Host "⏱️  This operation may take a moment..."
         
@@ -355,13 +444,13 @@ if ($proceedStep2.Trim().ToLower() -in @('n','no')) {
             -ResourceGroupName $resourceGroup `
             -Name $accountName `
             -PublicNetworkAccess "Enabled" `
-            -IpRule $ipv4OnlyIPs `
+            -IpRule $mergedIpRules `
             -ErrorAction Stop | Out-Null
         
         Write-Host ""
         Write-Host "✅ Step 2: IP Firewall Configured Successfully" -ForegroundColor Green
-        Write-Host "   - IPv4 Addresses Added: $ipv4Count" -ForegroundColor Gray
-        $completedSteps += "✅ IP Firewall Configuration ($ipv4Count addresses)"
+        Write-Host "   - Total IP Rules: $($mergedIpRules.Count) ($addedCount added, $($initialIpRules.Count) preserved)" -ForegroundColor Gray
+        $completedSteps += "✅ IP Firewall Configuration ($($mergedIpRules.Count) total addresses)"
         
     } catch {
         Write-Error "Step 2 failed: $($_.Exception.Message)"
@@ -521,12 +610,15 @@ Please complete the following steps in Microsoft Fabric:
 2. Create a new Mirrored Database:
    - Click '+ New' → 'Mirrored Database'
    - Select 'Azure Cosmos DB'
-3. Configure the connection
+3. Configure the connection:
+   - Select your Cosmos DB account: https://$accountName.documents.azure.com:443/
+   - Authenticate using Organizational Account (your current user)
+   - Configure the remaining mirroring settings as needed
 4. Complete the setup wizard and start mirroring
 5. Wait for the initial synchronization to complete
 
 Once you have successfully created the mirrored database and verified
-that data is syncing, return to this script to disable public access and use private endpoints only.
+that data is syncing, return to this script to retore network settings to their original state.
 
 "@ -ForegroundColor Yellow
 
@@ -556,37 +648,86 @@ Write-Host ""
 $proceedStep5 = Read-Host "Proceed with Step 5 (restore original network settings)? [Y/n]"
 if ($proceedStep5.Trim().ToLower() -in @('n','no')) {
     Write-Host "⏭️  Step 5 skipped" -ForegroundColor Yellow
-    Write-Host "⚠️  WARNING: Public network access remains ENABLED" -ForegroundColor Yellow
-    $completedSteps += "⏭️  Network Settings Restoration (skipped - public access still enabled)"
+    if ($initialPublicNetworkAccess -eq "Enabled") {
+        Write-Host "⚠️  WARNING: Public network access remains ENABLED with IP firewall rules" -ForegroundColor Yellow
+    } else {
+        Write-Host "⚠️  WARNING: Public network access remains ENABLED (was Disabled initially)" -ForegroundColor Yellow
+    }
+    $completedSteps += "⏭️  Network Settings Restoration (skipped)"
 } else {
     try {
         Write-Host "Initial Public Network Access state was: $initialPublicNetworkAccess"
         Write-Host ""
-        Write-Host "Disabling public network access for security..." -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "🔒 This will disable public network access, relying on:" -ForegroundColor Yellow
-        Write-Host "   - Private endpoints for secure access" -ForegroundColor Yellow
-        Write-Host "   - Network ACL bypass for Fabric workspace" -ForegroundColor Yellow
-        Write-Host ""
         
-        $confirmDisable = Read-Host "Confirm disabling public network access? [y/N]"
-        if ($confirmDisable.Trim().ToLower() -in @('y','yes')) {
-            Update-AzCosmosDBAccount `
-                -ResourceGroupName $resourceGroup `
-                -Name $accountName `
-                -PublicNetworkAccess "Disabled" | Out-Null
-            
+        if ($initialPublicNetworkAccess -eq "Enabled") {
+            # Public access was enabled initially - restore original IP rules
+            Write-Host "Restoring original network settings..." -ForegroundColor Yellow
             Write-Host ""
-            Write-Host "✅ Step 5: Public Network Access Disabled" -ForegroundColor Green
-            $completedSteps += "✅ Public Network Access Disabled"
+            Write-Host "🔄 This will:" -ForegroundColor Yellow
+            Write-Host "   - Keep public network access ENABLED (original state)" -ForegroundColor Yellow
+            Write-Host "   - Restore original IP firewall rules ($($initialIpRules.Count) rules)" -ForegroundColor Yellow
+            Write-Host "   - Retain RBAC policies" -ForegroundColor Yellow
+            Write-Host "   - Retain Network ACL bypass capability and resource ID" -ForegroundColor Yellow
+            Write-Host ""
+            
+            $confirmRestore = Read-Host "Confirm restoring original network settings? [y/N]"
+            if ($confirmRestore.Trim().ToLower() -in @('y','yes')) {
+                if ($initialIpRules.Count -gt 0) {
+                    # Restore original IP rules
+                    Update-AzCosmosDBAccount `
+                        -ResourceGroupName $resourceGroup `
+                        -Name $accountName `
+                        -PublicNetworkAccess "Enabled" `
+                        -IpRule $initialIpRules | Out-Null
+                    
+                    Write-Host ""
+                    Write-Host "✅ Step 5: Network Settings Restored (Public access enabled, $($initialIpRules.Count) original IP rules restored)" -ForegroundColor Green
+                } else {
+                    # No original IP rules, so clear them
+                    Update-AzCosmosDBAccount `
+                        -ResourceGroupName $resourceGroup `
+                        -Name $accountName `
+                        -PublicNetworkAccess "Enabled" `
+                        -IpRule @() | Out-Null
+                    
+                    Write-Host ""
+                    Write-Host "✅ Step 5: Network Settings Restored (Public access enabled, IP rules cleared)" -ForegroundColor Green
+                }
+                $completedSteps += "✅ Network Settings Restored to Original State"
+            } else {
+                Write-Host "⚠️  Network settings not restored" -ForegroundColor Yellow
+                $completedSteps += "⏭️  Network Settings Restoration (cancelled)"
+            }
         } else {
-            Write-Host "⚠️  Public network access remains ENABLED" -ForegroundColor Yellow
-            $completedSteps += "⏭️  Network Settings Restoration (cancelled - public access still enabled)"
+            # Public access was disabled initially - just disable it again (should already be disabled but confirm)
+            Write-Host "Restoring original network settings..." -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "🔄 This will:" -ForegroundColor Yellow
+            Write-Host "   - Disable public network access (original state)" -ForegroundColor Yellow
+            Write-Host "   - Retain RBAC policies" -ForegroundColor Yellow
+            Write-Host "   - Retain Network ACL bypass capability and resource ID" -ForegroundColor Yellow
+            Write-Host "   - Rely on private endpoints for secure access" -ForegroundColor Yellow
+            Write-Host ""
+            
+            $confirmRestore = Read-Host "Confirm restoring original network settings? [y/N]"
+            if ($confirmRestore.Trim().ToLower() -in @('y','yes')) {
+                Update-AzCosmosDBAccount `
+                    -ResourceGroupName $resourceGroup `
+                    -Name $accountName `
+                    -PublicNetworkAccess "Disabled" | Out-Null
+                
+                Write-Host ""
+                Write-Host "✅ Step 5: Network Settings Restored (Public access disabled)" -ForegroundColor Green
+                $completedSteps += "✅ Network Settings Restored to Original State"
+            } else {
+                Write-Host "⚠️  Network settings not restored" -ForegroundColor Yellow
+                $completedSteps += "⏭️  Network Settings Restoration (cancelled)"
+            }
         }
         
     } catch {
         Write-Error "Step 5 failed: $($_.Exception.Message)"
-        Write-Warning "Public network access may still be enabled. Please check manually."
+        Write-Warning "Network settings may not have been restored. Please check manually."
     }
 }
 
@@ -613,6 +754,18 @@ foreach ($step in $completedSteps) {
 }
 
 Write-Host ""
+
+# Get fresh account state for final summary
+Write-Host "Retrieving final account state..." -ForegroundColor Gray
+try {
+    $finalAccount = Get-AzCosmosDBAccount -ResourceGroupName $resourceGroup -Name $accountName -ErrorAction Stop
+    $finalPublicAccess = $finalAccount.PublicNetworkAccess
+    $finalIpRulesCount = if ($finalAccount.IpRules) { $finalAccount.IpRules.Count } else { 0 }
+} catch {
+    $finalPublicAccess = "Unknown"
+    $finalIpRulesCount = "Unknown"
+}
+
 Write-Host @"
 ═══════════════════════════════════════════════════════════════
 Configuration Summary
@@ -623,7 +776,9 @@ Cosmos DB Account            : $accountName
 Region                       : $region
 Fabric Workspace             : $workspaceName
 Initial Public Access        : $initialPublicNetworkAccess
-Current Public Access        : $(try { (Get-AzCosmosDBAccount -ResourceGroupName $resourceGroup -Name $accountName).PublicNetworkAccess } catch { "Unknown" })
+Current Public Access        : $finalPublicAccess
+Initial IP Firewall Rules    : $($initialIpRules.Count)
+Current IP Firewall Rules    : $finalIpRulesCount
 
 🎉 Your Cosmos DB account is now configured for Fabric Mirroring!
 ═══════════════════════════════════════════════════════════════
