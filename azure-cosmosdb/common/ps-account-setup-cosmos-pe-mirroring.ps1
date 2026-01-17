@@ -620,8 +620,8 @@ Please complete the following steps in Microsoft Fabric:
 
 1. Navigate to your Fabric workspace: '$workspaceName'
 2. Create a new Mirrored Database:
-   - Click '+ New' → 'Mirrored Database'
-   - Select 'Azure Cosmos DB'
+   - Click '+ New'
+   - Select 'Mirrored Azure Cosmos DB'
 3. Configure the connection:
    - Select your Cosmos DB account: https://$accountName.documents.azure.com:443/
    - Authenticate using Organizational Account (your current user)
