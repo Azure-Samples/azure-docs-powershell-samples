@@ -10,8 +10,10 @@
 # WHAT THIS SCRIPT DOES:
 # Step 1: Creates custom RBAC role (readMetadata/readAnalytics) and assigns 
 #         Data Contributor role to current user
-# Step 2: Temporarily enables public access and adds DataFactory/PowerQueryOnline 
-#         service tag IPs to firewall (merges with existing IPs)
+# Step 2: Temporarily enables public access and adds service tag IPs to firewall
+#         - DataFactory: regional IPs for the specified region
+#         - PowerQueryOnline: all regional IPs (not deployed in every region)
+#         (merges with existing IPs)
 # Step 3: Enables Fabric Network ACL Bypass capability and configures workspace 
 #         resource ID for bypass
 # Step 4: Prompts user to manually create Fabric mirror in portal
@@ -59,7 +61,7 @@
 # - Step 2 may take up to 15 minutes to propagate IP firewall rules
 # - Temporarily enables public access during setup (Step 2-4)
 # - Returns network settings to original state in Step 5
-# - Service tag IPs are region-specific and automatically downloaded
+# - DataFactory service tag IPs are region-specific; PowerQueryOnline IPs are aggregated across regions (not deployed in every region)
 # - Script captures initial state and preserves user's custom IP rules
 #
 # ==============================================================================
@@ -377,9 +379,8 @@ if ($proceedStep2.Trim().ToLower() -in @('n','no')) {
         Write-Host "Downloading service tags JSON file..."
         $jsonContent = Invoke-RestMethod -Uri $jsonUrl
         
-        Write-Host "Parsing JSON for DataFactory.$region and PowerQueryOnline.$region service tags..."
+        Write-Host "Parsing JSON for DataFactory.$region and PowerQueryOnline (all regions) service tags..."
         $dataFactorySearch = "DataFactory.$region"
-        $powerQuerySearch = "PowerQueryOnline.$region"
         
         $dataFactoryIPs = @()
         foreach ($item in $jsonContent.values) {
@@ -389,27 +390,38 @@ if ($proceedStep2.Trim().ToLower() -in @('n','no')) {
             }
         }
         
+        # PowerQueryOnline: aggregate all regional tags (PowerQueryOnline.<region>), then keep IPv4 only and de-duplicate.
         $powerQueryIPs = @()
         foreach ($item in $jsonContent.values) {
-            if ($item.name -ieq $powerQuerySearch) {
-                $powerQueryIPs = $item.properties.addressPrefixes
-                break
+            if ($null -ne $item.name -and ($item.name -imatch '^PowerQueryOnline(\.|$)')) {
+                $prefixes = $item.properties.addressPrefixes
+                if ($prefixes) {
+                    $powerQueryIPs += $prefixes
+                }
             }
         }
+
+        Write-Host "Filtering PowerQueryOnline to IPv4 and removing duplicates..."
+        $powerQueryIPv4Unique = $powerQueryIPs |
+            Where-Object { $_ -and ($_ -notmatch ':') } |
+            Sort-Object -Unique
         
-        Write-Host "DataFactory IP count: $($dataFactoryIPs.Count)"
-        Write-Host "PowerQueryOnline IP count: $($powerQueryIPs.Count)"
+        Write-Host "DataFactory IP count (raw): $($dataFactoryIPs.Count)"
+        Write-Host "PowerQueryOnline IP count (raw, all regions): $($powerQueryIPs.Count)"
+        Write-Host "PowerQueryOnline IPv4 unique count: $($powerQueryIPv4Unique.Count)"
         
         $combinedIPs = @()
         if ($dataFactoryIPs.Count -gt 0) { $combinedIPs += $dataFactoryIPs }
-        if ($powerQueryIPs.Count -gt 0) { $combinedIPs += $powerQueryIPs }
+        if ($powerQueryIPv4Unique.Count -gt 0) { $combinedIPs += $powerQueryIPv4Unique }
         
         if ($combinedIPs.Count -eq 0) {
             throw "No IP addresses found for either service."
         }
         
-        Write-Host "Filtering out IPv6 addresses (Cosmos DB only supports IPv4)..."
-        $ipv4OnlyIPs = $combinedIPs | Where-Object { $_ -notmatch ':' }
+        Write-Host "Filtering out IPv6 addresses (Cosmos DB only supports IPv4) and removing duplicates..."
+        $ipv4OnlyIPs = $combinedIPs |
+            Where-Object { $_ -and ($_ -notmatch ':') } |
+            Sort-Object -Unique
         
         if ($ipv4OnlyIPs.Count -eq 0) {
             throw "No IPv4 addresses found after filtering."
