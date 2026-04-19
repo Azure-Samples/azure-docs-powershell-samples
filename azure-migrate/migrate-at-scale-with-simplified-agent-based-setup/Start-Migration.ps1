@@ -1,6 +1,5 @@
 #Azure Migrate/ASR - Planned Failover (Migration) Script
-#Extracted from Start-ASRExamples.ps1
-#requires -Version 7 -module Az.RecoveryServices, Az.Accounts
+#requires -Version 7 -module Az.Accounts
 
 param (
     [Parameter(Mandatory=$true)][string]$CsvPath             # Path to CSV file for batch planned failover.

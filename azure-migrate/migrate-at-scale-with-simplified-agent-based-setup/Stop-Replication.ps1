@@ -1,5 +1,5 @@
 #Azure Migrate/ASR - Disable Replication Script
-#requires -Version 7 -module Az.RecoveryServices, Az.Accounts
+#requires -Version 7 -module Az.Accounts
 
 param (
     [Parameter(Mandatory=$true)][string]$CsvPath             # Path to CSV file for batch disable replication.
