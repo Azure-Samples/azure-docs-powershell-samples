@@ -15,8 +15,12 @@ $subnet =  Get-AzResource -ResourceId $gateway.Properties.ipConfigurations[0].pr
 $vnetName = $subnet.ParentResource.Substring($subnet.ParentResource.ToLower().IndexOf($vnetRegex.ToLower()) + $vnetRegex.Length, $subnet.ParentResource.Length - $subnet.ParentResource.ToLower().IndexOf($vnetRegex.ToLower()) - $vnetRegex.Length)
 $vnet = Get-AzVirtualNetwork -Name $vnetName -ResourceGroupName $resourceGroup
 $subnet = Get-AzVirtualNetworkSubnetConfig -Name GatewaySubnet -VirtualNetwork $vnet
+
+# Only consider ipconfigs that belong to virtualNetworkGateway resources
+$vngIpConfigs = $subnet.IpConfigurations | Where-Object { $_.Id -match $gatewayRegex }
+
 $gatewayToDelete = ""
-foreach($ipconfig in $subnet.IpConfigurations)
+foreach($ipconfig in $vngIpConfigs)
 {
     $gatewayName = $ipconfig.Id.substring($ipconfig.Id.ToLower().IndexOf($gatewayRegex.ToLower()) + $gatewayRegex.Length, $ipconfig.Id.ToLower().IndexOf($ipconfigRegex.ToLower()) - $ipconfig.Id.ToLower().IndexOf($gatewayRegex.ToLower()) - $gatewayRegex.Length-1)
     $tempGwt = get-AzVirtualNetworkGateway -Name $gatewayName -ResourceGroupName $gateway.ResourceGroupName
