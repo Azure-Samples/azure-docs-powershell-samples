@@ -1,14 +1,10 @@
-Run the following operations to migrate gateway
+To support the gateway migration, please complete the following steps:
 
-1. Enable AFEC flag on customer subscription : 
-<br>AllowDeletionOfIpPrefixFromSubnet</br>
-<br>AllowMultipleAddressPrefixesOnSubnet</br>
+1. Verify that the existing GatewaySubnet has sufficient available address space to support the migration.
+2. If the GatewaySubnet does not have sufficient space, add a secondary address prefix to the existing GatewaySubnet.
+3. Once the subnet update is complete, proceed with the gateway migration process.
+<br> </br>
 
-1. Enable GWM feature flag on customer subscription: 
-<br>EREnableMultipleIpv4PrefixesOnGWSubnet</br>
-<br>EREnableMultipleGatewaysOnGWSubnet</br>
-
-1. Customer need to add a second prefix to gateway subnet via powershell 
 1. Install the latest powershell for Az.Network Module to have the new API to enable/disable gateway
 1. Install Az.ResourceGraph module if it was not installed by default with PowerShell installation
 1. Run PrepareMigration.ps1, this script will do validation and create all new resources : gateway and connections. Please note that Microsoft will auto-assign a Standard Public IP to ExpressRoute Gateway. Creation of Public IP is no longer required. 
