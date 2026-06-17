@@ -1,16 +1,11 @@
-﻿
 # <FullScript>
-# Add an elastic pool in Azure SQL Database to a failover group
-
-# <SetVariables>
-
 # Set variables for your server and database
 $subscriptionId = '<Subscription-ID>'
 $randomIdentifier = $(Get-Random)
 $resourceGroupName = "myResourceGroup-$randomIdentifier"
 $location = "East US"
-$adminLogin = "azureuser"
-$password = "PWD27!"+(New-Guid).Guid
+$adminLogin = "<admin>"
+$password = "<password>"
 $serverName = "mysqlserver-$randomIdentifier"
 $poolName = "myElasticPool"
 $databaseName = "mySampleDatabase"
@@ -18,190 +13,199 @@ $drLocation = "West US"
 $drServerName = "mysqlsecondary-$randomIdentifier"
 $failoverGroupName = "failovergrouptutorial-$randomIdentifier"
 
-
-# The ip address range that you want to allow to access your server 
-# Leaving at 0.0.0.0 will prevent outside-of-azure connections
+# The IP address range that you want to allow to access your server
+# Leaving at 0.0.0.0 will prevent outside-of-Azure connections
 $startIp = "0.0.0.0"
 $endIp = "0.0.0.0"
 
 # Show randomized variables
-Write-host "Resource group name is" $resourceGroupName 
-Write-host "Password is" $password  
-Write-host "Server name is" $serverName 
-Write-host "DR Server name is" $drServerName 
-Write-host "Failover group name is" $failoverGroupName
-
-# </SetVariables>
-
-# <CreateResourceGroup>
+Write-Host "Resource group name is" $resourceGroupName
+Write-Host "Password is" $password
+Write-Host "Server name is" $serverName
+Write-Host "DR Server name is" $drServerName
+Write-Host "Failover group name is" $failoverGroupName
 
 # Set subscription ID
-Set-AzContext -SubscriptionId $subscriptionId 
+Set-AzContext -SubscriptionId $subscriptionId
 
 # Create a resource group
-Write-host "Creating resource group..."
-$resourceGroup = New-AzResourceGroup -Name $resourceGroupName -Location $location -Tag @{Owner="SQLDB-Samples"}
+Write-Host "Creating resource group..."
+$resourceGroupParams = @{
+   Name     = $resourceGroupName
+   Location = $location
+   Tag      = @{Owner = "SQLDB-Samples" }
+}
+$resourceGroup = New-AzResourceGroup @resourceGroupParams
 $resourceGroup
 
-# </CreateResourceGroup>
-
-# <CreatePrimaryPool>
+# Build the SQL administrator credential reused for both servers
+$adminCredential = New-Object -TypeName System.Management.Automation.PSCredential `
+   -ArgumentList $adminLogin, (ConvertTo-SecureString -String $password -AsPlainText -Force)
 
 # Create a server with a system-wide unique server name
-Write-host "Creating primary logical server..."
-New-AzSqlServer -ResourceGroupName $resourceGroupName `
-   -ServerName $serverName `
-   -Location $location `
-   -SqlAdministratorCredentials $(New-Object -TypeName System.Management.Automation.PSCredential `
-   -ArgumentList $adminLogin, $(ConvertTo-SecureString -String $password -AsPlainText -Force))
-Write-host "Primary logical server = " $serverName
+Write-Host "Creating primary logical server..."
+$primaryServerParams = @{
+   ResourceGroupName           = $resourceGroupName
+   ServerName                  = $serverName
+   Location                    = $location
+   SqlAdministratorCredentials = $adminCredential
+}
+New-AzSqlServer @primaryServerParams
+Write-Host "Primary logical server = " $serverName
 
 # Create a server firewall rule that allows access from the specified IP range
-Write-host "Configuring firewall for primary logical server..."
-New-AzSqlServerFirewallRule -ResourceGroupName $resourceGroupName `
-   -ServerName $serverName `
-   -FirewallRuleName "AllowedIPs" -StartIpAddress $startIp -EndIpAddress $endIp
-Write-host "Firewall configured" 
+Write-Host "Configuring firewall for primary logical server..."
+$primaryFirewallParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $serverName
+   FirewallRuleName  = "AllowedIPs"
+   StartIpAddress    = $startIp
+   EndIpAddress      = $endIp
+}
+New-AzSqlServerFirewallRule @primaryFirewallParams
+Write-Host "Firewall configured"
 
 # Create General Purpose Gen5 database with 2 vCore
-Write-host "Creating a gen5 2 vCore database..."
-$database = New-AzSqlDatabase  -ResourceGroupName $resourceGroupName `
-   -ServerName $serverName `
-   -DatabaseName $databaseName `
-   -Edition "GeneralPurpose" `
-   -VCore 2 `
-   -ComputeGeneration Gen5 `
-   -MinimumCapacity 1 `
-   -SampleName "AdventureWorksLT"
+Write-Host "Creating a gen5 2 vCore database..."
+$databaseParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $serverName
+   DatabaseName      = $databaseName
+   Edition           = "GeneralPurpose"
+   VCore             = 2
+   ComputeGeneration = "Gen5"
+   MinimumCapacity   = 1
+   SampleName        = "AdventureWorksLT"
+}
+$database = New-AzSqlDatabase @databaseParams
 $database
 
 # Create primary Gen5 elastic 2 vCore pool
-Write-host "Creating elastic pool..."
-$elasticPool = New-AzSqlElasticPool -ResourceGroupName $resourceGroupName `
-    -ServerName $serverName `
-    -ElasticPoolName $poolName `
-    -Edition "GeneralPurpose" `
-    -vCore 2 `
-    -ComputeGeneration Gen5
+Write-Host "Creating elastic pool..."
+$primaryPoolParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $serverName
+   ElasticPoolName   = $poolName
+   Edition           = "GeneralPurpose"
+   VCore             = 2
+   ComputeGeneration = "Gen5"
+}
+$elasticPool = New-AzSqlElasticPool @primaryPoolParams
 $elasticPool
 
-# Add single db into elastic pool
-Write-host "Creating elastic pool..."
-$addDatabase = Set-AzSqlDatabase -ResourceGroupName $resourceGroupName `
-    -ServerName $serverName `
-    -DatabaseName $databaseName `
-    -ElasticPoolName $poolName
+# Add single database into elastic pool
+Write-Host "Creating elastic pool..."
+$addDatabaseParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $serverName
+   DatabaseName      = $databaseName
+   ElasticPoolName   = $poolName
+}
+$addDatabase = Set-AzSqlDatabase @addDatabaseParams
 $addDatabase
 
-# </CreatePrimaryPool>
-
-# <CreateSecondaryPool>
-
 # Create a secondary server in the failover region
-Write-host "Creating a secondary logical server in the failover region..."
-New-AzSqlServer -ResourceGroupName $resourceGroupName `
-   -ServerName $drServerName `
-   -Location $drLocation `
-   -SqlAdministratorCredentials $(New-Object -TypeName System.Management.Automation.PSCredential `
-      -ArgumentList $adminlogin, $(ConvertTo-SecureString -String $password -AsPlainText -Force))
-Write-host "Secondary logical server =" $drServerName
+Write-Host "Creating a secondary logical server in the failover region..."
+$secondaryServerParams = @{
+   ResourceGroupName           = $resourceGroupName
+   ServerName                  = $drServerName
+   Location                    = $drLocation
+   SqlAdministratorCredentials = $adminCredential
+}
+New-AzSqlServer @secondaryServerParams
+Write-Host "Secondary logical server =" $drServerName
 
 # Create a server firewall rule that allows access from the specified IP range
-Write-host "Configuring firewall for secondary logical server..."
-New-AzSqlServerFirewallRule -ResourceGroupName $resourceGroupName `
-   -ServerName $drServerName `
-   -FirewallRuleName "AllowedIPs" -StartIpAddress $startIp -EndIpAddress $endIp
-Write-host "Firewall configured" 
+Write-Host "Configuring firewall for secondary logical server..."
+$secondaryFirewallParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $drServerName
+   FirewallRuleName  = "AllowedIPs"
+   StartIpAddress    = $startIp
+   EndIpAddress      = $endIp
+}
+New-AzSqlServerFirewallRule @secondaryFirewallParams
+Write-Host "Firewall configured"
 
 # Create secondary Gen5 elastic 2 vCore pool
-Write-host "Creating secondary elastic pool..."
-$elasticPool = New-AzSqlElasticPool -ResourceGroupName $resourceGroupName `
-    -ServerName $drServerName `
-    -ElasticPoolName $poolName `
-    -Edition "GeneralPurpose" `
-    -vCore 2 `
-    -ComputeGeneration Gen5
+Write-Host "Creating secondary elastic pool..."
+$secondaryPoolParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $drServerName
+   ElasticPoolName   = $poolName
+   Edition           = "GeneralPurpose"
+   VCore             = 2
+   ComputeGeneration = "Gen5"
+}
+$elasticPool = New-AzSqlElasticPool @secondaryPoolParams
 $elasticPool
 
-# <CreateSecondaryPool>
-
-# <CreateFailoverGroup>
-
 # Create a failover group between the servers
-Write-host "Creating failover group..." 
-New-AzSqlDatabaseFailoverGroup `
-  –ResourceGroupName $resourceGroupName `
-   -ServerName $serverName `
-   -PartnerServerName $drServerName  `
-   –FailoverGroupName $failoverGroupName `
-   –FailoverPolicy Manual
-Write-host "Failover group created successfully." 
-
-# </CreateFailoverGroup>
-
-# <AddPooltoFailoverGroup>
+Write-Host "Creating failover group..."
+$failoverGroupParams = @{
+   ResourceGroupName            = $resourceGroupName
+   ServerName                   = $serverName
+   PartnerServerName            = $drServerName
+   FailoverGroupName            = $failoverGroupName
+   FailoverPolicy               = "Automatic"
+   GracePeriodWithDataLossHours = 2
+}
+New-AzSqlDatabaseFailoverGroup @failoverGroupParams
+Write-Host "Failover group created successfully."
 
 # Add elastic pool to the failover group
-Write-host "Enumerating databases in elastic pool...." 
-$FailoverGroup = Get-AzSqlDatabaseFailoverGroup `
-                 -ResourceGroupName $resourceGroupName `
-                 -ServerName $serverName `
-                 -FailoverGroupName $failoverGroupName
-$databases = Get-AzSqlElasticPoolDatabase `
-               -ResourceGroupName $resourceGroupName `
-               -ServerName $serverName `
-               -ElasticPoolName $poolName
-Write-host "Adding databases to failover group..." 
-$failoverGroup = $failoverGroup | Add-AzSqlDatabaseToFailoverGroup `
-                                  -Database $databases 
+Write-Host "Enumerating databases in elastic pool...."
+$getFailoverGroupParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $serverName
+   FailoverGroupName = $failoverGroupName
+}
+$failoverGroup = Get-AzSqlDatabaseFailoverGroup @getFailoverGroupParams
+$poolDatabaseParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $serverName
+   ElasticPoolName   = $poolName
+}
+$databases = Get-AzSqlElasticPoolDatabase @poolDatabaseParams
+Write-Host "Adding databases to failover group..."
+$failoverGroup = $failoverGroup | Add-AzSqlDatabaseToFailoverGroup -Database $databases
 $failoverGroup
 
-# </AddPooltoFailoverGroup>
-
-# <CheckRole>
-
 # Check role of secondary replica
-Write-host "Confirming the secondary server is secondary...." 
-(Get-AzSqlDatabaseFailoverGroup `
-   -FailoverGroupName $failoverGroupName `
-   -ResourceGroupName $resourceGroupName `
-   -ServerName $drServerName).ReplicationRole
+Write-Host "Confirming the secondary server is secondary...."
+$secondaryRoleParams = @{
+   FailoverGroupName = $failoverGroupName
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $drServerName
+}
+(Get-AzSqlDatabaseFailoverGroup @secondaryRoleParams).ReplicationRole
 
-# </CheckRole>
-
-# <Failover>
 # Failover to secondary server
-Write-host "Failing over failover group to the secondary..." 
-Switch-AzSqlDatabaseFailoverGroup `
-   -ResourceGroupName $resourceGroupName `
-   -ServerName $drServerName `
-   -FailoverGroupName $failoverGroupName
-Write-host "Failover group failed over to" $drServerName 
+Write-Host "Failing over failover group to the secondary..."
+$switchToSecondaryParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $drServerName
+   FailoverGroupName = $failoverGroupName
+}
+Switch-AzSqlDatabaseFailoverGroup @switchToSecondaryParams
+Write-Host "Failover group failed over to" $drServerName
 
 # Check role of secondary replica
-Write-host "Confirming the secondary server is now primary" 
-(Get-AzSqlDatabaseFailoverGroup `
-   -FailoverGroupName $failoverGroupName `
-   -ResourceGroupName $resourceGroupName `
-   -ServerName $drServerName).ReplicationRole
-
-# </Failover>
-
-# <FailBack>
+Write-Host "Confirming the secondary server is now primary"
+(Get-AzSqlDatabaseFailoverGroup @secondaryRoleParams).ReplicationRole
 
 # Revert failover to primary server
-Write-host "Failing over failover group to the primary...." 
-Switch-AzSqlDatabaseFailoverGroup `
-   -ResourceGroupName $resourceGroupName `
-   -ServerName $serverName `
-   -FailoverGroupName $failoverGroupName
-Write-host "Failover group failed over to" $serverName 
-
-# </FailBack>
+Write-Host "Failing over failover group to the primary...."
+$switchToPrimaryParams = @{
+   ResourceGroupName = $resourceGroupName
+   ServerName        = $serverName
+   FailoverGroupName = $failoverGroupName
+}
+Switch-AzSqlDatabaseFailoverGroup @switchToPrimaryParams
+Write-Host "Failover group failed over to" $serverName
 
 # Clean up resources by removing the resource group
-# Write-host "Removing resource group..."
+# Write-Host "Removing resource group..."
 # Remove-AzResourceGroup -ResourceGroupName $resourceGroupName
-# Write-host "Resource group removed =" $resourceGroupName
-
+# Write-Host "Resource group removed =" $resourceGroupName
 # </FullScript>
