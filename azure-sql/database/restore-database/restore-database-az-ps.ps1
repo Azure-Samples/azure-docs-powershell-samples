@@ -1,0 +1,77 @@
+# <FullScript>
+# Connect-AzAccount
+$subscriptionId = "<Subscription-ID>"
+# Set the resource group name and location for your server
+$resourceGroupName = "myResourceGroup-$(Get-Random)"
+$location = "westus2"
+# Set an admin login and password for your server
+$adminSqlLogin = "<admin>"
+$password = "<password>"
+# Set server name - the logical server name has to be unique in the system
+$serverName = "server-$(Get-Random)"
+# The sample database name
+$databaseName = "mySampleDatabase"
+# The restored database names
+$pointInTimeRestoreDatabaseName = "MySampleDatabase_10MinutesAgo"
+# The IP address range that you want to allow to access your server
+$startIp = "0.0.0.0"
+$endIp = "0.0.0.0"
+
+# Set subscription
+Set-AzContext -SubscriptionId $subscriptionId
+
+# Create a resource group
+$resourceGroup = New-AzResourceGroup -Name $resourceGroupName -Location $location
+
+$adminCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $adminSqlLogin, $(ConvertTo-SecureString -String $password -AsPlainText -Force)
+
+# Create a server with a system-wide unique server name
+$serverParams = @{
+    ResourceGroupName           = $resourceGroupName
+    ServerName                  = $serverName
+    Location                    = $location
+    SqlAdministratorCredentials = $adminCredential
+}
+$server = New-AzSqlServer @serverParams
+
+# Create a server firewall rule that allows access from the specified IP range
+$firewallParams = @{
+    ResourceGroupName = $resourceGroupName
+    ServerName        = $serverName
+    FirewallRuleName  = "AllowedIPs"
+    StartIpAddress    = $startIp
+    EndIpAddress      = $endIp
+}
+$firewallRule = New-AzSqlServerFirewallRule @firewallParams
+
+# Create a blank database with an S0 performance level
+$databaseParams = @{
+    ResourceGroupName             = $resourceGroupName
+    ServerName                    = $serverName
+    DatabaseName                  = $databaseName
+    RequestedServiceObjectiveName = "S0"
+}
+$database = New-AzSqlDatabase @databaseParams
+
+Start-Sleep -second 600
+
+# Restore database to its state 7 minutes ago
+# Note: Point-in-time restore requires database to be at least 5 minutes old
+$restoreParams = @{
+    FromPointInTimeBackup = $true
+    PointInTime           = (Get-Date).AddMinutes(-7)
+    ResourceGroupName     = $resourceGroupName
+    ServerName            = $serverName
+    TargetDatabaseName    = $pointInTimeRestoreDatabaseName
+    ResourceId            = $database.ResourceID
+    Edition               = "Standard"
+    ServiceObjectiveName  = "S0"
+}
+Restore-AzSqlDatabase @restoreParams
+
+# Note: For performing geo-restore for a managed instance database, use -FromGeoBackup parameter with restore.
+# Sample script: Restore-AzSqlDatabase -FromGeoBackup -ResourceGroupName "TargetResourceGroup" -ServerName "TargetServer" -TargetDatabaseName "RestoredDatabase" -ResourceId $geoBackup.ResourceID -Edition "Standard" -RequestedServiceObjectiveName "S2"
+
+# Clean up deployment
+# Remove-AzResourceGroup -ResourceGroupName $resourceGroupName
+# </FullScript>
