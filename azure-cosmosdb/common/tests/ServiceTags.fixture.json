@@ -1,0 +1,109 @@
+{
+  "changeNumber": "1",
+  "cloud": "Public",
+  "values": [
+    {
+      "name": "DataFactory.westus",
+      "id": "DataFactory.westus",
+      "properties": {
+        "region": "westus",
+        "systemService": "DataFactory",
+        "addressPrefixes": [
+          "20.0.0.0/28",
+          "20.0.1.0/28",
+          "2603:1000::/48"
+        ]
+      }
+    },
+    {
+      "name": "DataFactory.eastus",
+      "id": "DataFactory.eastus",
+      "properties": {
+        "region": "eastus",
+        "systemService": "DataFactory",
+        "addressPrefixes": [
+          "40.0.0.0/28"
+        ]
+      }
+    },
+    {
+      "name": "PowerQueryOnline",
+      "id": "PowerQueryOnline",
+      "properties": {
+        "region": "",
+        "systemService": "PowerQueryOnline",
+        "addressPrefixes": [
+          "172.208.172.80/28",
+          "2603:2000::/48"
+        ]
+      }
+    },
+    {
+      "name": "PowerQueryOnline.westus",
+      "id": "PowerQueryOnline.westus",
+      "properties": {
+        "region": "westus",
+        "systemService": "PowerQueryOnline",
+        "addressPrefixes": [
+          "172.208.173.0/28"
+        ]
+      }
+    },
+    {
+      "name": "PowerBI",
+      "id": "PowerBI",
+      "properties": {
+        "region": "",
+        "systemService": "PowerBI",
+        "addressPrefixes": [
+          "51.0.0.0/28",
+          "20.0.0.0/28"
+        ]
+      }
+    },
+    {
+      "name": "PowerBI.westus",
+      "id": "PowerBI.westus",
+      "properties": {
+        "region": "westus",
+        "systemService": "PowerBI",
+        "addressPrefixes": [
+          "51.0.1.0/28"
+        ]
+      }
+    },
+    {
+      "name": "PowerPlatformInfra",
+      "id": "PowerPlatformInfra",
+      "properties": {
+        "region": "",
+        "systemService": "PowerPlatformInfra",
+        "addressPrefixes": [
+          "13.0.0.0/28"
+        ]
+      }
+    },
+    {
+      "name": "PowerPlatformInfra.westus",
+      "id": "PowerPlatformInfra.westus",
+      "properties": {
+        "region": "westus",
+        "systemService": "PowerPlatformInfra",
+        "addressPrefixes": [
+          "13.0.1.0/28"
+        ]
+      }
+    },
+    {
+      "name": "PowerBIGateway",
+      "id": "PowerBIGateway",
+      "properties": {
+        "region": "",
+        "systemService": "PowerBIGateway",
+        "addressPrefixes": [
+          "99.99.99.0/28"
+        ]
+      }
+    }
+  ]
+}

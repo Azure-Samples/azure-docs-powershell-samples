@@ -12,8 +12,9 @@
 #         Data Contributor role to current user
 # Step 2: Temporarily enables public access and adds service tag IPs to firewall
 #         - DataFactory: regional IPs for the specified region
-#         - PowerQueryOnline: all regional IPs (not deployed in every region)
-#         (merges with existing IPs)
+#         - PowerQueryOnline, PowerBI, PowerPlatformInfra: all regional IPs
+#           (Fabric connection-test infra is not deployed in every region)
+#         (merges with existing IPs; tag set is configurable - see $FabricServiceTagConfig)
 # Step 3: Enables Fabric Network ACL Bypass capability and configures workspace 
 #         resource ID for bypass
 # Step 4: Prompts user to manually create Fabric mirror in portal
@@ -61,13 +62,136 @@
 # - Step 2 may take up to 15 minutes to propagate IP firewall rules
 # - Temporarily enables public access during setup (Step 2-4)
 # - Returns network settings to original state in Step 5
-# - DataFactory service tag IPs are region-specific; PowerQueryOnline IPs are aggregated across regions (not deployed in every region)
+# - DataFactory service tag IPs are region-specific; PowerQueryOnline, PowerBI, and PowerPlatformInfra IPs are aggregated across regions (not deployed in every region)
 # - Script captures initial state and preserves user's custom IP rules
 #
 # ==============================================================================
 
 # Set strict mode for better error handling
 $ErrorActionPreference = "Stop"
+
+# ==============================================================================
+# Configurable Fabric setup service-tag allowlist (see GitHub issue #62)
+# ==============================================================================
+# Step 2 temporarily opens public access and adds these Azure service-tag IP
+# ranges to the Cosmos DB IP firewall so Microsoft Fabric can reach the account
+# while the mirror connection is created. The interactive connection-creation
+# test arrives via the public IP path (the trusted-workspace Network ACL Bypass
+# only covers runtime replication), so the allowlist must cover Fabric's egress.
+#
+# Verified-working set (issue #62): DataFactory.<region> + PowerQueryOnline +
+# PowerBI + PowerPlatformInfra. The single "magic" connection-test IP lives in
+# exactly one of PowerBI / PowerPlatformInfra, but isolating it requires a
+# controlled live retest. To minimize the number of firewall rules you add,
+# comment out entries below and re-run to find the smallest set that still lets
+# the Fabric connection succeed, then keep only what you need.
+#
+# Scope values:
+#   'Region'     - exact regional tag only ("<Name>.<region>")
+#   'AllRegions' - the global tag plus every regional variant ("<Name>" and
+#                  "<Name>.*"); used for tags not deployed in every region.
+$FabricServiceTagConfig = @(
+    [pscustomobject]@{ Name = 'DataFactory';        Scope = 'Region'     }
+    [pscustomobject]@{ Name = 'PowerQueryOnline';   Scope = 'AllRegions' }
+    [pscustomobject]@{ Name = 'PowerBI';            Scope = 'AllRegions' }
+    [pscustomobject]@{ Name = 'PowerPlatformInfra'; Scope = 'AllRegions' }
+)
+
+function Get-FabricMirroringFirewallIPs {
+    <#
+    .SYNOPSIS
+        Builds the de-duplicated IPv4 allowlist for Fabric mirror setup from a
+        parsed Azure service-tags document and a tag configuration.
+
+    .DESCRIPTION
+        Pure (side-effect-free apart from optional host progress output) helper
+        that turns Azure service-tag data into the exact list of IPv4 prefixes to
+        add to the Cosmos DB IP firewall. Kept separate from the network download
+        and the interactive flow so it can be unit tested with a fixture (see
+        tests/ps-account-setup-cosmos-pe-mirroring.Tests.ps1).
+
+        Cosmos DB IP firewall rules are IPv4 only, so IPv6 prefixes are dropped
+        and the union across all configured tags is de-duplicated.
+
+    .PARAMETER ServiceTagJson
+        The parsed Azure service-tags JSON object (must expose a .values array of
+        entries with .name and .properties.addressPrefixes).
+
+    .PARAMETER Region
+        Azure region short name used to resolve 'Region'-scoped tags
+        (e.g. "westus").
+
+    .PARAMETER TagConfig
+        Array of objects with Name and Scope ('Region' or 'AllRegions').
+
+    .PARAMETER Quiet
+        Suppress the per-tag progress output written to the host.
+
+    .OUTPUTS
+        [string[]] Sorted, unique IPv4 prefixes.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $ServiceTagJson,
+
+        [Parameter(Mandatory = $true)]
+        [string] $Region,
+
+        [Parameter(Mandatory = $true)]
+        $TagConfig,
+
+        [switch] $Quiet
+    )
+
+    $collected = @()
+
+    foreach ($tag in $TagConfig) {
+        $tagIPs = @()
+
+        switch ($tag.Scope) {
+            'Region' {
+                $search = "$($tag.Name).$Region"
+                foreach ($item in $ServiceTagJson.values) {
+                    if ($item.name -ieq $search) {
+                        if ($item.properties.addressPrefixes) { $tagIPs += $item.properties.addressPrefixes }
+                        break
+                    }
+                }
+            }
+            'AllRegions' {
+                # Match the global tag ("<Name>") and every regional variant ("<Name>.<region>").
+                $pattern = '^' + [regex]::Escape($tag.Name) + '(\.|$)'
+                foreach ($item in $ServiceTagJson.values) {
+                    if ($null -ne $item.name -and ($item.name -imatch $pattern)) {
+                        if ($item.properties.addressPrefixes) { $tagIPs += $item.properties.addressPrefixes }
+                    }
+                }
+            }
+            default {
+                throw "Unknown scope '$($tag.Scope)' for service tag '$($tag.Name)'. Use 'Region' or 'AllRegions'."
+            }
+        }
+
+        # Cosmos DB supports IPv4 only.
+        $tagIPv4 = @($tagIPs | Where-Object { $_ -and ($_ -notmatch ':') })
+
+        if (-not $Quiet) {
+            $scopeLabel = if ($tag.Scope -eq 'Region') { "$($tag.Name).$Region" } else { "$($tag.Name) (all regions)" }
+            Write-Host ("  {0,-42} raw: {1,5}  IPv4: {2,5}" -f $scopeLabel, $tagIPs.Count, $tagIPv4.Count) -ForegroundColor Gray
+        }
+
+        $collected += $tagIPv4
+    }
+
+    # Return the de-duplicated IPv4 union across all configured tags.
+    $ipv4Unique = @($collected | Where-Object { $_ -and ($_ -notmatch ':') } | Sort-Object -Unique)
+    return ,$ipv4Unique
+}
+
+# Allow this script to be dot-sourced (e.g. by Pester tests) to load the helper
+# functions above without executing the interactive setup flow below.
+if ($MyInvocation.InvocationName -eq '.') { return }
 
 Write-Host @"
 
@@ -141,7 +265,7 @@ Step 1: Create/Assign RBAC Roles for Mirroring
         - Assign both roles to current user for Fabric mirroring access.
 
 Step 2: Temporarily enable public access and configure IP Firewall
-        - Download Azure service tags for DataFactory and PowerQueryOnline
+        - Download Azure service tags for DataFactory, PowerQueryOnline, PowerBI, and PowerPlatformInfra
         - Filter IPv4 addresses for the specified region
         - Enable public network access if needed (temporarily for setup)
         - Update Cosmos DB IP firewall rules
@@ -348,7 +472,7 @@ Write-Host ""
 # ═══════════════════════════════════════════════════════════════
 # STEP 2: Configure IP Firewall
 # ═══════════════════════════════════════════════════════════════
-# Download and add DataFactory and PowerQueryOnline IP ranges to Cosmos DB IP firewall
+# Download and add DataFactory, PowerQueryOnline, PowerBI, and PowerPlatformInfra IP ranges to Cosmos DB IP firewall
 # Enable public network access temporarily for setup then apply the IP firewall rules.
 # This is necessary for Fabric to initially access the Cosmos DB account during initial setup.
 # Once the mirroring is set up, public access can be disabled again leaving only private endpoints.
@@ -379,56 +503,22 @@ if ($proceedStep2.Trim().ToLower() -in @('n','no')) {
         Write-Host "Downloading service tags JSON file..."
         $jsonContent = Invoke-RestMethod -Uri $jsonUrl
         
-        Write-Host "Parsing JSON for DataFactory.$region and PowerQueryOnline (all regions) service tags..."
-        $dataFactorySearch = "DataFactory.$region"
-        
-        $dataFactoryIPs = @()
-        foreach ($item in $jsonContent.values) {
-            if ($item.name -ieq $dataFactorySearch) {
-                $dataFactoryIPs = $item.properties.addressPrefixes
-                break
-            }
-        }
-        
-        # PowerQueryOnline: aggregate all regional tags (PowerQueryOnline.<region>), then keep IPv4 only and de-duplicate.
-        $powerQueryIPs = @()
-        foreach ($item in $jsonContent.values) {
-            if ($null -ne $item.name -and ($item.name -imatch '^PowerQueryOnline(\.|$)')) {
-                $prefixes = $item.properties.addressPrefixes
-                if ($prefixes) {
-                    $powerQueryIPs += $prefixes
-                }
-            }
+        Write-Host "Building IP allowlist from configured Fabric service tags..."
+        $configuredTagNames = ($FabricServiceTagConfig | ForEach-Object { $_.Name }) -join ', '
+        Write-Host "Configured service tags: $configuredTagNames"
+        Write-Host "Per-tag address counts (raw includes IPv6; only IPv4 is applied):" -ForegroundColor Gray
+
+        $ipv4OnlyIPs = Get-FabricMirroringFirewallIPs `
+            -ServiceTagJson $jsonContent `
+            -Region $region `
+            -TagConfig $FabricServiceTagConfig
+
+        if ($ipv4OnlyIPs.Count -eq 0) {
+            throw "No IPv4 addresses found for the configured service tags."
         }
 
-        Write-Host "Filtering PowerQueryOnline to IPv4 and removing duplicates..."
-        $powerQueryIPv4Unique = $powerQueryIPs |
-            Where-Object { $_ -and ($_ -notmatch ':') } |
-            Sort-Object -Unique
-        
-        Write-Host "DataFactory IP count (raw): $($dataFactoryIPs.Count)"
-        Write-Host "PowerQueryOnline IP count (raw, all regions): $($powerQueryIPs.Count)"
-        Write-Host "PowerQueryOnline IPv4 unique count: $($powerQueryIPv4Unique.Count)"
-        
-        $combinedIPs = @()
-        if ($dataFactoryIPs.Count -gt 0) { $combinedIPs += $dataFactoryIPs }
-        if ($powerQueryIPv4Unique.Count -gt 0) { $combinedIPs += $powerQueryIPv4Unique }
-        
-        if ($combinedIPs.Count -eq 0) {
-            throw "No IP addresses found for either service."
-        }
-        
-        Write-Host "Filtering out IPv6 addresses (Cosmos DB only supports IPv4) and removing duplicates..."
-        $ipv4OnlyIPs = $combinedIPs |
-            Where-Object { $_ -and ($_ -notmatch ':') } |
-            Sort-Object -Unique
-        
-        if ($ipv4OnlyIPs.Count -eq 0) {
-            throw "No IPv4 addresses found after filtering."
-        }
-        
         $ipv4Count = $ipv4OnlyIPs.Count
-        Write-Host "IPv4 addresses: $ipv4Count"
+        Write-Host "Total unique IPv4 addresses across configured tags: $ipv4Count"
         
         # Merge with existing IP rules to preserve user's custom rules
         Write-Host "Checking for existing IP firewall rules..."
