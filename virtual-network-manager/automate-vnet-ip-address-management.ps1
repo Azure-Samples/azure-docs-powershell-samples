@@ -6,12 +6,14 @@
 # Description: This script automates the process of creating, associating, and disassociating Virtual Networks with IPAM Pools in Azure. It uses PowerShell to interact with Azure resources and manage IP address allocations efficiently. The script is designed to be run in a synchronous manner to ensure that no API calls fail such that they need to be retried. The script includes bulk creation of Virtual Networks using IpamPools reference, association of existing Virtual Networks using IpamPool reference, and disassociation of existing Virtual Networks using IpamPool reference. It is for demonstrtation purposes only and should not be used in production environments.
 
 # Prerequisites:
-# - Azure PowerShell module installed and configured, or Azure Cloud Shell
-# - Azure account with appropriate permissions to create and manage Virtual Networks, Azure Virtual Network Manager and IPAM Pools
+# - Azure PowerShell installed locally, or Azure Cloud Shell
+# - An existing Azure Virtual Network Manager instance and IPAM pool
+# - Appropriate permissions to create and manage virtual networks
 # - Valid Azure subscription ID and resource group name
 # - IPAM Pool reference ARM ID for creating and associating Virtual Networks
 
-# Run the script in Azure PowerShell or Azure Cloud Shell with appropriate permissions to create and manage Virtual Networks, Azure Virtual Network Manager and IPAM Pools.
+# This script uses virtual network cmdlets and can run locally or in Azure Cloud Shell.
+# Create the Azure Virtual Network Manager instance and IPAM pool by using PowerShell locally because Azure Cloud Shell doesn't currently support Azure Virtual Network Manager cmdlets.
 # This script is for demonstration purposes only and should not be used in production environments.
 # Note: The script uses the Az module for Azure PowerShell. Ensure you have the latest version of the Az module installed.
 
@@ -21,7 +23,7 @@
 $location = "<your resource location>" # e.g. "East US", "West Europe", etc.
 $rgname = "<your resource group>" # use RG name as "*" to fetch all VNets from all RGs within subscription
 $sub = "<your subscription id>" # use subscription id as "*" to fetch all VNets from all subscriptions within tenant
-$ipamPoolARMId = "<your ipam pool ARM ID>" # e.g. "/subscriptions/<your subscription id>/resourceGroups/<your resource group>/providers/Microsoft.Network/ipamPools/<your ipam pool name>"
+$ipamPoolARMId = "<your IPAM pool resource ID>" # e.g. "/subscriptions/<subscriptionId>/resourceGroups/<resourceGroupName>/providers/Microsoft.Network/networkManagers/<networkManagerName>/ipamPools/<ipAddressPoolName>"
 $numberIPaddresses = "8" # Number of IP addresses to allocate from the IPAM Pool. This should be a valid number based on your IPAM Pool configuration.
 
 # Select your subscription
